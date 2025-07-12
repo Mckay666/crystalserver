@@ -206,9 +206,21 @@ double Item::getTranscendenceChance() const {
 		return 0;
 	}
 	return quadraticPoly(
-		g_configManager().getFloat(TRANSCENDANCE_CHANCE_FORMULA_A),
-		g_configManager().getFloat(TRANSCENDANCE_CHANCE_FORMULA_B),
-		g_configManager().getFloat(TRANSCENDANCE_CHANCE_FORMULA_C),
+		g_configManager().getFloat(TRANSCENDENCE_CHANCE_FORMULA_A),
+		g_configManager().getFloat(TRANSCENDENCE_CHANCE_FORMULA_B),
+		g_configManager().getFloat(TRANSCENDENCE_CHANCE_FORMULA_C),
+		getTier()
+	);
+}
+
+double Item::getAmplificationChance() const {
+	if (getTier() == 0) {
+		return 0;
+	}
+	return quadraticPoly(
+		g_configManager().getFloat(AMPLIFICATION_CHANCE_FORMULA_A),
+		g_configManager().getFloat(AMPLIFICATION_CHANCE_FORMULA_B),
+		g_configManager().getFloat(AMPLIFICATION_CHANCE_FORMULA_C),
 		getTier()
 	);
 }
@@ -1351,7 +1363,7 @@ Item::getDescriptions(const ItemType &it, const std::shared_ptr<Item> &item /*= 
 					ss << ", ";
 				}
 
-				ss << fmt::format("{} {:+}%", getCombatName(indexToCombatType(i)), it.abilities->fieldAbsorbPercent[i]);
+				ss << fmt::format("{} {:+}%", getCombatName(indexToCombatType(i)), it.abilities->absorbPercent[i]);
 				protection = true;
 			}
 			if (protection) {
@@ -1489,16 +1501,6 @@ Item::getDescriptions(const ItemType &it, const std::shared_ptr<Item> &item /*= 
 			}
 
 			for (size_t i = 0; i < COMBAT_COUNT; ++i) {
-				if (it.abilities->absorbPercent[i] == 0) {
-					continue;
-				}
-
-				ss.str("");
-				ss << getCombatName(indexToCombatType(i)) << ' '
-				   << std::showpos << it.abilities->absorbPercent[i] << std::noshowpos << '%';
-				descriptions.emplace_back("Protection", ss.str());
-			}
-			for (size_t i = 0; i < COMBAT_COUNT; ++i) {
 				if (it.abilities->fieldAbsorbPercent[i] == 0) {
 					continue;
 				}
@@ -1534,7 +1536,7 @@ Item::getDescriptions(const ItemType &it, const std::shared_ptr<Item> &item /*= 
 		}
 
 		if (it.upgradeClassification > 0) {
-			descriptions.emplace_back("Tier", std::to_string(item->getTier()));
+			descriptions.emplace_back("Tier", getTierEffectDescription(item));
 		}
 
 		std::string slotName;
@@ -2039,6 +2041,14 @@ Item::getDescriptions(const ItemType &it, const std::shared_ptr<Item> &item /*= 
 		if (it.upgradeClassification > 0) {
 			descriptions.emplace_back("Classification", std::to_string(it.upgradeClassification));
 		}
+
+		if (!it.elementalBond.empty()) {
+			descriptions.emplace_back("Elemental Bond", it.elementalBond);
+		}
+
+		if (it.mantra > 0) {
+			descriptions.emplace_back("Mantra", std::to_string(it.mantra));
+		}
 	}
 	descriptions.shrink_to_fit();
 	return descriptions;
@@ -2144,23 +2154,45 @@ SoundEffect_t Item::getMovementSound(const std::shared_ptr<Cylinder> &toCylinder
 }
 
 std::string Item::parseClassificationDescription(const std::shared_ptr<Item> &item) {
-	std::ostringstream string;
 	if (item && item->getClassification() >= 1) {
-		string << std::endl
-			   << "Classification: " << std::to_string(item->getClassification()) << " Tier: " << std::to_string(item->getTier());
-		if (item->getTier() != 0) {
-			if (Item::items[item->getID()].weaponType != WEAPON_NONE) {
-				string << fmt::format(" ({:.2f}% Onslaught).", item->getFatalChance());
-			} else if (g_game().getObjectCategory(item) == OBJECTCATEGORY_HELMETS) {
-				string << fmt::format(" ({:.2f}% Momentum).", item->getMomentumChance());
-			} else if (g_game().getObjectCategory(item) == OBJECTCATEGORY_ARMORS) {
-				string << fmt::format(" ({:.2f}% Ruse).", item->getDodgeChance());
-			} else if (g_game().getObjectCategory(item) == OBJECTCATEGORY_LEGS) {
-				string << fmt::format(" ({:.2f}% Transcendence).", item->getTranscendenceChance());
-			}
+		return fmt::format("\nClassification: {} Tier: {}", item->getClassification(), getTierEffectDescription(item));
+	}
+	return "";
+}
+
+std::string Item::getTierEffectDescription(const std::shared_ptr<Item> &item) {
+	if (!item) {
+		return "";
+	}
+
+	auto itemTier = item->getTier();
+	if (itemTier == 0) {
+		return "0";
+	}
+
+	std::string effectDescription;
+	if (Item::items[item->getID()].weaponType != WEAPON_NONE) {
+		effectDescription = fmt::format(" ({:.2f}% Onslaught)", item->getFatalChance());
+	} else {
+		switch (g_game().getObjectCategory(item)) {
+			case OBJECTCATEGORY_HELMETS:
+				effectDescription = fmt::format(" ({:.2f}% Momentum)", item->getMomentumChance());
+				break;
+			case OBJECTCATEGORY_ARMORS:
+				effectDescription = fmt::format(" ({:.2f}% Ruse)", item->getDodgeChance());
+				break;
+			case OBJECTCATEGORY_LEGS:
+				effectDescription = fmt::format(" ({:.2f}% Transcendence)", item->getTranscendenceChance());
+				break;
+			case OBJECTCATEGORY_BOOTS:
+				effectDescription = fmt::format(" ({:.2f}% Amplification)", item->getAmplificationChance());
+				break;
+			default:
+				break;
 		}
 	}
-	return string.str();
+
+	return fmt::format("{}{}", itemTier, effectDescription);
 }
 
 std::string Item::parseShowDurationSpeed(int32_t speed, bool &begin) {
@@ -2233,6 +2265,16 @@ std::string Item::parseShowAttributesDescription(const std::shared_ptr<Item> &it
 				begin = false;
 			} else {
 				itemDescription << ", Arm:" << armor;
+			}
+		}
+
+		const int32_t mantra = itemType.mantra;
+		if (mantra != 0) {
+			if (begin) {
+				itemDescription << " (Mantra:" << mantra;
+				begin = false;
+			} else {
+				itemDescription << ", Mantra:" << mantra;
 			}
 		}
 
@@ -3196,6 +3238,13 @@ std::string Item::getDescription(const ItemType &it, int32_t lookDistance, const
 			s << std::endl
 			  << getWeightDescription(it, it.weight);
 		}
+	}
+
+	if (!it.elementalBond.empty() && it.isWeapon()) {
+		std::string bond = it.elementalBond;
+		capitalizeWords(bond);
+		s << std::endl
+		  << "Elemental Bond: " << bond;
 	}
 
 	if (item) {

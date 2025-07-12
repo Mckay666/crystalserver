@@ -222,6 +222,7 @@ Game::Game() {
 	offlineTrainingWindow.choices.emplace_back("Club Fighting and Shielding", SKILL_CLUB);
 	offlineTrainingWindow.choices.emplace_back("Distance Fighting and Shielding", SKILL_DISTANCE);
 	offlineTrainingWindow.choices.emplace_back("Magic Level and Shielding", SKILL_MAGLEVEL);
+	offlineTrainingWindow.choices.emplace_back("Fist Fighting and Shielding", SKILL_FIST);
 	offlineTrainingWindow.buttons.emplace_back("Okay", 1);
 	offlineTrainingWindow.buttons.emplace_back("Cancel", 0);
 	offlineTrainingWindow.defaultEscapeButton = 1;
@@ -559,7 +560,7 @@ void Game::start(ServiceManager* manager) {
 		EVENT_CHECK_CREATURE_INTERVAL, [this] { checkCreatures(); }, "Game::checkCreatures"
 	);
 	g_dispatcher().cycleEvent(
-		EVENT_IMBUEMENT_INTERVAL, [this] { checkImbuements(); }, "Game::checkImbuements"
+		EVENT_IMBUEMENT_AND_SERENE_STATUS_INTERVAL, [this] { checkImbuementsAndSereneStatus(); }, "Game::checkImbuementsAndSereneStatus"
 	);
 	g_dispatcher().cycleEvent(
 		EVENT_LUA_GARBAGE_COLLECTION, [this] { g_luaEnvironment().collectGarbage(); }, "Calling GC"
@@ -1504,6 +1505,11 @@ void Game::playerMoveCreature(const std::shared_ptr<Player> &player, const std::
 			return;
 		}
 
+		if (!Position::areInRange<1, 1, 0>(movingCreaturePos, player->getPosition())) {
+			player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+			return;
+		}
+
 		if (player != movingCreature) {
 			if (toTile->hasFlag(TILESTATE_BLOCKPATH)) {
 				player->sendCancelMessage(RETURNVALUE_NOTENOUGHROOM);
@@ -1543,7 +1549,6 @@ void Game::playerMoveCreature(const std::shared_ptr<Player> &player, const std::
 		if (ret != RETURNVALUE_NOERROR) {
 			player->sendCancelMessage(ret);
 		}
-		player->setLastPosition(player->getPosition());
 	});
 }
 
@@ -1917,7 +1922,7 @@ void Game::playerMoveItem(const std::shared_ptr<Player> &player, const Position 
 }
 
 bool Game::isTryingToStow(const Position &toPos, const std::shared_ptr<Cylinder> &toCylinder) const {
-	return toCylinder->getContainer() && toCylinder->getItem()->getID() == ITEM_LOCKER && toPos.getZ() == ITEM_SUPPLY_STASH_INDEX;
+	return toCylinder->getContainer() && toCylinder->getItem()->getID() == ITEM_LOCKER && toPos.getZ() == ITEM_STASH_INDEX;
 }
 
 ReturnValue Game::checkMoveItemToCylinder(const std::shared_ptr<Player> &player, const std::shared_ptr<Cylinder> &fromCylinder, const std::shared_ptr<Cylinder> &toCylinder, const std::shared_ptr<Item> &item, Position toPos) {
@@ -3266,6 +3271,9 @@ ObjectCategory_t Game::getObjectCategory(const ItemType &it) {
 	ObjectCategory_t category = OBJECTCATEGORY_DEFAULT;
 	if (it.weaponType != WEAPON_NONE) {
 		switch (it.weaponType) {
+			case WEAPON_FIST:
+				category = OBJECTCATEGORY_FISTS;
+				break;
 			case WEAPON_SWORD:
 				category = OBJECTCATEGORY_SWORDS;
 				break;
@@ -4775,6 +4783,11 @@ void Game::playerBrowseField(uint32_t playerId, const Position &pos) {
 void Game::playerStowItem(uint32_t playerId, const Position &pos, uint16_t itemId, uint8_t stackpos, uint8_t count, bool allItems) {
 	const auto &player = getPlayerByID(playerId);
 	if (!player) {
+		return;
+	}
+
+	if (!player->isNearDepotBox()) {
+		player->sendCancelMessage("You need to be close to the deposit box to stow items.");
 		return;
 	}
 
@@ -6743,7 +6756,8 @@ bool Game::combatBlockHit(CombatDamage &damage, const std::shared_ptr<Creature> 
 		return true;
 	}
 
-	if (target->getPlayer() && target->isInGhostMode()) {
+	const auto &targetPlayer = target->getPlayer();
+	if (targetPlayer && targetPlayer->isInGhostMode()) {
 		return true;
 	}
 
@@ -6752,9 +6766,9 @@ bool Game::combatBlockHit(CombatDamage &damage, const std::shared_ptr<Creature> 
 	}
 
 	// Skill dodge (ruse)
-	if (std::shared_ptr<Player> targetPlayer = target->getPlayer()) {
+	if (targetPlayer) {
 		auto chance = targetPlayer->getDodgeChance();
-		if (chance > 0 && uniform_random(0, 10000) < chance) {
+		if (chance > 0 && uniform_random(0, 10000) < chance || damage.hazardDodge) {
 			InternalGame::sendBlockEffect(BLOCK_DODGE, damage.primary.type, target->getPosition(), attacker);
 			targetPlayer->sendTextMessage(MESSAGE_ATTENTION, "You dodged an attack.");
 			return true;
@@ -6773,8 +6787,6 @@ bool Game::combatBlockHit(CombatDamage &damage, const std::shared_ptr<Creature> 
 	CombatParams damageReflectedParams;
 
 	BlockType_t primaryBlockType, secondaryBlockType;
-	std::shared_ptr<Player> targetPlayer = target->getPlayer();
-
 	if (damage.primary.type != COMBAT_NONE) {
 		damage.primary.value = -damage.primary.value;
 		// Damage healing primary
@@ -6802,15 +6814,16 @@ bool Game::combatBlockHit(CombatDamage &damage, const std::shared_ptr<Creature> 
 		InternalGame::sendBlockEffect(primaryBlockType, damage.primary.type, target->getPosition(), attacker);
 		// Damage reflection primary
 		if (!damage.extension && attacker) {
-			std::shared_ptr<Monster> attackerMonster = attacker->getMonster();
+			const auto &attackerMonster = attacker->getMonster();
 			if (attackerMonster && targetPlayer && damage.primary.type != COMBAT_HEALING) {
 				// Charm rune (target as player)
 				const auto &mType = attackerMonster->getMonsterType();
 				if (mType) {
-					charmRune_t activeCharm = g_iobestiary().getCharmFromTarget(targetPlayer, mType);
+					auto [activeCharm, _] = g_iobestiary().getCharmFromTarget(targetPlayer, mType);
 					if (activeCharm == CHARM_PARRY) {
-						const auto charm = g_iobestiary().getBestiaryCharm(activeCharm);
-						if (charm && charm->type == CHARM_DEFENSIVE && (charm->chance > normal_random(0, 100))) {
+						const auto &charm = g_iobestiary().getBestiaryCharm(activeCharm);
+						const auto charmTier = targetPlayer->getCharmTier(activeCharm);
+						if (charm && charm->type == CHARM_DEFENSIVE && (charm->chance[charmTier] >= normal_random(1, 10000) / 100.0)) {
 							g_iobestiary().parseCharmCombat(charm, targetPlayer, attacker, (damage.primary.value + damage.secondary.value));
 						}
 					}
@@ -7128,6 +7141,11 @@ void Game::applyWheelOfDestinyHealing(CombatDamage &damage, const std::shared_pt
 		if (attackerPlayer->wheel()->getInstant("Blessing of the Grove")) {
 			damage.primary.value += (damage.primary.value * attackerPlayer->wheel()->checkBlessingGroveHealingByTarget(target)) / 100.;
 		}
+
+		if (attackerPlayer->wheel()->getInstant(WheelInstant_t::SANCTUARY)) {
+			const float sanctuaryBonus = attackerPlayer->wheel()->checkRevelationPerkSanctuary();
+			damage.primary.value = static_cast<int32_t>(std::round(damage.primary.value * sanctuaryBonus));
+		}
 	}
 }
 
@@ -7168,6 +7186,22 @@ void Game::applyWheelOfDestinyEffectsToDamage(CombatDamage &damage, const std::s
 				damage.secondary.value += (damage.secondary.value * damageBonus) / 100.;
 			}
 		}
+
+		if (attackerPlayer->wheel()->getStage(WheelStage_t::ASCETIC) > 0) {
+			int32_t damageBonus = attackerPlayer->wheel()->checkRevelationPerkAscetic();
+			if (damageBonus != 0) {
+				damage.primary.value += damageBonus;
+				if (damage.secondary.value != 0) {
+					damage.secondary.value += damageBonus;
+				}
+			}
+		}
+
+		if (attackerPlayer->wheel()->getInstant(WheelInstant_t::SANCTUARY)) {
+			const float sanctuaryBonus = attackerPlayer->wheel()->checkRevelationPerkSanctuary();
+			damage.primary.value = static_cast<int32_t>(std::round(damage.primary.value * sanctuaryBonus));
+			damage.secondary.value = static_cast<int32_t>(std::round(damage.secondary.value * sanctuaryBonus));
+		}
 	}
 }
 
@@ -7186,6 +7220,23 @@ int32_t Game::applyHealthChange(const CombatDamage &damage, const std::shared_pt
 		}
 	}
 	return targetHealth;
+}
+
+static void applyImproveMonkHealing(CombatDamage &damage, const std::shared_ptr<Player> &player) {
+	if (!player) {
+		return;
+	}
+
+	if (damage.primary.type != COMBAT_HEALING) {
+		return;
+	}
+
+	if (player->getVirtue() == VIRTUE_SUSTAIN && !(damage.instantSpellName).empty()) {
+		const uint8_t virtueSustainBonusPercent = (player->isSerene() ? 70 : 35);
+		const float multiplier = 1.0f + (virtueSustainBonusPercent / 100.0f);
+
+		damage.primary.value = static_cast<int32_t>(damage.primary.value * multiplier);
+	}
 }
 
 bool Game::combatChangeHealth(const std::shared_ptr<Creature> &attacker, const std::shared_ptr<Creature> &target, CombatDamage &damage, bool isEvent /*= false*/) {
@@ -7221,6 +7272,9 @@ bool Game::combatChangeHealth(const std::shared_ptr<Creature> &attacker, const s
 
 		// Wheel of destiny combat healing
 		applyWheelOfDestinyHealing(damage, attackerPlayer, target);
+
+		// Monk Virtue of Sustain
+		applyImproveMonkHealing(damage, attackerPlayer);
 
 		auto realHealthChange = target->getHealth();
 		target->gainHealth(attacker, damage.primary.value);
@@ -7412,11 +7466,23 @@ bool Game::combatChangeHealth(const std::shared_ptr<Creature> &attacker, const s
 
 		if (!damage.extension && attackerMonster && targetPlayer) {
 			// Charm rune (target as player)
-			if (charmRune_t activeCharm = g_iobestiary().getCharmFromTarget(targetPlayer, g_monsters().getMonsterTypeByRaceId(attackerMonster->getRaceId()));
-			    activeCharm != CHARM_NONE && activeCharm != CHARM_CLEANSE) {
-				if (const auto charm = g_iobestiary().getBestiaryCharm(activeCharm);
-				    charm->type == CHARM_DEFENSIVE && charm->chance > normal_random(0, 100) && g_iobestiary().parseCharmCombat(charm, targetPlayer, attacker, (damage.primary.value + damage.secondary.value))) {
-					return false; // Dodge charm
+			auto [major, minor] = g_iobestiary().getCharmFromTarget(targetPlayer, attackerMonster->getMonsterType());
+			if (minor != CHARM_NONE && minor != CHARM_CLEANSE) {
+				const auto &charm = g_iobestiary().getBestiaryCharm(minor);
+				const auto charmTier = targetPlayer->getCharmTier(minor);
+				if (charm && charm->type == CHARM_DEFENSIVE && charm->chance[charmTier] >= normal_random(1, 10000) / 100.0) {
+					g_iobestiary().parseCharmCombat(charm, targetPlayer, attacker, (damage.primary.value + damage.secondary.value));
+				}
+			}
+
+			if (major != CHARM_NONE) {
+				const auto &charm = g_iobestiary().getBestiaryCharm(major);
+				const auto charmTier = targetPlayer->getCharmTier(major);
+				if (charm && charm->type == CHARM_DEFENSIVE && charm->chance[charmTier] >= normal_random(1, 10000) / 100.0) {
+					g_iobestiary().parseCharmCombat(charm, targetPlayer, attacker, (damage.primary.value + damage.secondary.value));
+					if (charm->id == CHARM_DODGE) {
+						return true;
+					}
 				}
 			}
 		}
@@ -7681,7 +7747,9 @@ void Game::sendMessages(
 		}
 
 		if (tmpPlayer == attackerPlayer && attackerPlayer != targetPlayer) {
-			buildMessageAsAttacker(target, damage, message, ss, damageString);
+			const auto &boots = tmpPlayer->getInventoryItem(CONST_SLOT_FEET);
+			bool amplifiedFatal = boots ? boots->getTier() > 0 : false;
+			buildMessageAsAttacker(target, damage, message, ss, damageString, amplifiedFatal, attackerPlayer);
 		} else if (tmpPlayer == targetPlayer) {
 			buildMessageAsTarget(attacker, damage, attackerPlayer, targetPlayer, message, ss, damageString);
 		} else {
@@ -7756,15 +7824,39 @@ void Game::buildMessageAsTarget(
 
 void Game::buildMessageAsAttacker(
 	const std::shared_ptr<Creature> &target, const CombatDamage &damage, TextMessage &message,
-	std::stringstream &ss, const std::string &damageString
+	std::stringstream &ss, const std::string &damageString, bool amplified, const std::shared_ptr<Player> &attackerPlayer
 ) const {
 	ss.str({});
 	ss << ucfirst(target->getNameDescription()) << " loses " << damageString << " due to your " << (damage.critical ? "critical " : " ") << "attack.";
+
+	if (damage.critical && target->getMonster() && attackerPlayer) {
+		const auto &targetMonster = target->getMonster();
+		static const std::pair<charmRune_t, std::string_view> charms[] = {
+			{ CHARM_LOW, " (low blow charm)" },
+			{ CHARM_SAVAGE, " (savage blow charm)" }
+		};
+
+		for (const auto &[charmType, charmText] : charms) {
+			if (targetMonster->checkCanApplyCharm(attackerPlayer, charmType)) {
+				ss << charmText;
+				break;
+			}
+		}
+	}
+
 	if (damage.extension) {
 		ss << " " << damage.exString;
 	}
+
+	if (damage.critical) {
+		const auto &targetMonster = target->getMonster();
+		if (targetMonster && attackerPlayer && targetMonster->checkCanApplyCharm(attackerPlayer, CHARM_LOW)) {
+			ss << " (low blow charm)";
+		}
+	}
+
 	if (damage.fatal) {
-		ss << " (Onslaught)";
+		ss << (amplified ? " (Amplified Onslaught)" : " (Onslaught)");
 	}
 	message.type = MESSAGE_DAMAGE_DEALT;
 	message.text = ss.str();
@@ -7796,12 +7888,18 @@ void Game::applyCharmRune(
 	if (!targetMonster || !attackerPlayer) {
 		return;
 	}
-	if (charmRune_t activeCharm = g_iobestiary().getCharmFromTarget(attackerPlayer, g_monsters().getMonsterTypeByRaceId(targetMonster->getRaceId()));
-	    activeCharm != CHARM_NONE) {
-		const auto charm = g_iobestiary().getBestiaryCharm(activeCharm);
-		int8_t chance = charm->id == CHARM_CRIPPLE ? charm->chance : charm->chance + attackerPlayer->getCharmChanceModifier();
-		g_logger().debug("charm chance: {}, base: {}, bonus: {}", chance, charm->chance, attackerPlayer->getCharmChanceModifier());
-		if (charm->type == CHARM_OFFENSIVE && (chance >= normal_random(0, 100))) {
+
+	auto [major, minor] = g_iobestiary().getCharmFromTarget(attackerPlayer, targetMonster->getMonsterType());
+	for (auto charmType : { major, minor }) {
+		if (charmType == CHARM_NONE) {
+			continue;
+		}
+
+		const auto &charm = g_iobestiary().getBestiaryCharm(charmType);
+		const auto charmTier = attackerPlayer->getCharmTier(charmType);
+		int8_t chance = charm->chance[charmTier] + (charm->id == CHARM_CRIPPLE ? 0 : attackerPlayer->getCharmChanceModifier());
+
+		if (charm->type == CHARM_OFFENSIVE && (chance >= normal_random(1, 10000) / 100.0)) {
 			g_iobestiary().parseCharmCombat(charm, attackerPlayer, target, realDamage);
 		}
 	}
@@ -7821,14 +7919,12 @@ void Game::applyManaLeech(
 		return;
 	}
 	// Void charm rune
-	if (targetMonster) {
-		if (uint16_t playerCharmRaceidVoid = attackerPlayer->parseRacebyCharm(CHARM_VOID, false, 0);
-		    playerCharmRaceidVoid != 0 && playerCharmRaceidVoid == targetMonster->getRaceId()) {
-			if (const auto charm = g_iobestiary().getBestiaryCharm(CHARM_VOID)) {
-				manaSkill += charm->percent;
-			}
+	if (targetMonster && attackerPlayer->parseRacebyCharm(CHARM_VOID) == targetMonster->getRaceId()) {
+		if (const auto &charm = g_iobestiary().getBestiaryCharm(CHARM_VOID)) {
+			manaSkill += charm->chance[attackerPlayer->getCharmTier(CHARM_VOID)] * 100;
 		}
 	}
+
 	CombatParams tmpParams;
 	CombatDamage tmpDamage;
 
@@ -7852,14 +7948,12 @@ void Game::applyLifeLeech(
 	if (normal_random(0, 100) >= lifeChance) {
 		return;
 	}
-	if (targetMonster) {
-		if (uint16_t playerCharmRaceidVamp = attackerPlayer->parseRacebyCharm(CHARM_VAMP, false, 0);
-		    playerCharmRaceidVamp != 0 && playerCharmRaceidVamp == targetMonster->getRaceId()) {
-			if (const auto lifec = g_iobestiary().getBestiaryCharm(CHARM_VAMP)) {
-				lifeSkill += lifec->percent;
-			}
+	if (targetMonster && attackerPlayer->parseRacebyCharm(CHARM_VAMP) == targetMonster->getRaceId()) {
+		if (const auto &charm = g_iobestiary().getBestiaryCharm(CHARM_VAMP)) {
+			lifeSkill += charm->chance[attackerPlayer->getCharmTier(CHARM_VAMP)] * 100;
 		}
 	}
+
 	CombatParams tmpParams;
 	CombatDamage tmpDamage;
 
@@ -7879,6 +7973,7 @@ int32_t Game::calculateLeechAmount(const int32_t &realDamage, const uint16_t &sk
 bool Game::combatChangeMana(const std::shared_ptr<Creature> &attacker, const std::shared_ptr<Creature> &target, CombatDamage &damage) {
 	const Position &targetPos = target->getPosition();
 	auto manaChange = damage.primary.value + damage.secondary.value;
+	auto spectators = Spectators().find<Player>(targetPos);
 	if (manaChange > 0) {
 		std::shared_ptr<Player> attackerPlayer;
 		if (attacker) {
@@ -7886,8 +7981,28 @@ bool Game::combatChangeMana(const std::shared_ptr<Creature> &attacker, const std
 		} else {
 			attackerPlayer = nullptr;
 		}
+	}
 
-		auto targetPlayer = target->getPlayer();
+	const auto &targetPlayer = target ? target->getPlayer() : nullptr;
+	const auto &attackerMonster = attacker ? attacker->getMonster() : nullptr;
+	const auto &attackerPlayer = attacker ? attacker->getPlayer() : nullptr;
+	if (targetPlayer && attackerMonster) {
+		uint16_t playerCharmRaceid = targetPlayer->parseRacebyCharm(CHARM_VOIDINVERSION);
+		if (playerCharmRaceid != 0) {
+			const auto &mType = g_monsters().getMonsterType(attackerMonster->getName());
+			if (mType && playerCharmRaceid == mType->info.raceid) {
+				const auto &charm = g_iobestiary().getBestiaryCharm(CHARM_VOIDINVERSION);
+				const auto charmTier = targetPlayer->getCharmTier(CHARM_VOIDINVERSION);
+				if (charm && (charm->chance[charmTier] > normal_random(0, 100)) && manaChange < 0) {
+					damage.primary.value = damage.primary.type == COMBAT_MANADRAIN ? -damage.primary.value : damage.primary.value;
+					damage.secondary.value = damage.secondary.type == COMBAT_MANADRAIN ? -damage.secondary.value : damage.secondary.value;
+					manaChange = damage.primary.value + damage.secondary.value;
+				}
+			}
+		}
+	}
+
+	if (manaChange > 0) {
 		if (attackerPlayer && targetPlayer && attackerPlayer->getSkull() == SKULL_BLACK && attackerPlayer->getSkullClient(targetPlayer) == SKULL_NONE) {
 			return false;
 		}
@@ -7930,7 +8045,7 @@ bool Game::combatChangeMana(const std::shared_ptr<Creature> &attacker, const std
 			message.primary.value = realManaChange;
 			message.primary.color = TEXTCOLOR_MAYABLUE;
 
-			for (const auto &spectator : Spectators().find<Player>(targetPos)) {
+			for (const auto &spectator : spectators) {
 				const auto &tmpPlayer = spectator->getPlayer();
 				if (!tmpPlayer) {
 					continue;
@@ -7963,14 +8078,6 @@ bool Game::combatChangeMana(const std::shared_ptr<Creature> &attacker, const std
 			return false;
 		}
 
-		std::shared_ptr<Player> attackerPlayer;
-		if (attacker) {
-			attackerPlayer = attacker->getPlayer();
-		} else {
-			attackerPlayer = nullptr;
-		}
-
-		auto targetPlayer = target->getPlayer();
 		if (attackerPlayer && targetPlayer && attackerPlayer->getSkull() == SKULL_BLACK && attackerPlayer->getSkullClient(targetPlayer) == SKULL_NONE) {
 			return false;
 		}
@@ -7997,32 +8104,36 @@ bool Game::combatChangeMana(const std::shared_ptr<Creature> &attacker, const std
 			}
 		}
 
-		if (targetPlayer && attacker && attacker->getMonster()) {
-			// Charm rune (target as player)
-			const auto mType = g_monsters().getMonsterType(attacker->getName());
-			if (mType) {
-				charmRune_t activeCharm = g_iobestiary().getCharmFromTarget(targetPlayer, mType);
-				if (activeCharm != CHARM_NONE && activeCharm != CHARM_CLEANSE) {
-					const auto charm = g_iobestiary().getBestiaryCharm(activeCharm);
-					if (charm && charm->type == CHARM_DEFENSIVE && (charm->chance > normal_random(0, 100))) {
-						if (g_iobestiary().parseCharmCombat(charm, targetPlayer, attacker, manaChange)) {
-							sendDoubleSoundEffect(targetPlayer->getPosition(), charm->soundCastEffect, charm->soundImpactEffect, targetPlayer);
-							return false; // Dodge charm
-						}
-					}
+		std::shared_ptr<MonsterType> mType = nullptr;
+		if (attackerMonster) {
+			mType = g_monsters().getMonsterType(attackerMonster->getName());
+		}
+		if (targetPlayer && attacker && mType) {
+			auto [major, minor] = g_iobestiary().getCharmFromTarget(targetPlayer, mType);
+			for (auto charmType : { major, minor }) {
+				if (charmType == CHARM_NONE || charmType == CHARM_CLEANSE) {
+					continue;
+				}
+
+				const auto &charm = g_iobestiary().getBestiaryCharm(charmType);
+				if (!charm || charm->type != CHARM_DEFENSIVE) {
+					continue;
+				}
+
+				const auto charmTier = targetPlayer->getCharmTier(charmType);
+				if (charm->chance[charmTier] < normal_random(1, 10000) / 100.0) {
+					continue;
+				}
+
+				g_iobestiary().parseCharmCombat(charm, targetPlayer, attacker, manaChange);
+
+				if (charm->id == CHARM_DODGE) {
+					return false; // Dodge charm
 				}
 			}
 		}
 
 		target->drainMana(attacker, manaLoss);
-		std::string cause = "(other)";
-		if (attacker) {
-			cause = attacker->getName();
-		}
-
-		if (targetPlayer) {
-			targetPlayer->updateInputAnalyzer(damage.primary.type, manaLoss, cause);
-		}
 
 		std::stringstream ss;
 
@@ -8035,7 +8146,7 @@ bool Game::combatChangeMana(const std::shared_ptr<Creature> &attacker, const std
 		message.primary.value = manaLoss;
 		message.primary.color = TEXTCOLOR_BLUE;
 
-		for (const auto &spectator : Spectators().find<Player>(targetPos)) {
+		for (const auto &spectator : spectators) {
 			const auto &tmpPlayer = spectator->getPlayer();
 			if (!tmpPlayer) {
 				continue;
@@ -8048,13 +8159,13 @@ bool Game::combatChangeMana(const std::shared_ptr<Creature> &attacker, const std
 				message.text = ss.str();
 			} else if (tmpPlayer == targetPlayer) {
 				ss.str({});
-				ss << "You lose " << damageString << " mana";
+				ss << "You lose " << damageString << "";
 				if (!attacker) {
 					ss << '.';
 				} else if (targetPlayer == attackerPlayer) {
 					ss << " due to your own attack.";
 				} else {
-					ss << " due to an attack by " << attacker->getNameDescription() << '.';
+					ss << " mana due to an attack by " << attacker->getNameDescription() << '.';
 				}
 				message.type = MESSAGE_DAMAGE_RECEIVED;
 				message.text = ss.str();
@@ -8077,6 +8188,20 @@ bool Game::combatChangeMana(const std::shared_ptr<Creature> &attacker, const std
 				message.text = spectatorMessage;
 			}
 			tmpPlayer->sendTextMessage(message);
+		}
+
+		if (targetPlayer) {
+			std::string cause = "(other)";
+			if (attacker) {
+				cause = attacker->getName();
+			}
+
+			targetPlayer->updateInputAnalyzer(damage.primary.type, -damage.primary.value, cause);
+			if (attackerPlayer) {
+				if (damage.secondary.type != COMBAT_NONE) {
+					attackerPlayer->updateInputAnalyzer(damage.secondary.type, -damage.secondary.value, cause);
+				}
+			}
 		}
 	}
 
@@ -8164,13 +8289,29 @@ void Game::addDistanceEffect(const CreatureVector &spectators, const Position &f
 	}
 }
 
-void Game::checkImbuements() const {
+void Game::checkImbuementsAndSereneStatus() {
 	for (const auto &[mapPlayerId, mapPlayer] : getPlayers()) {
 		if (!mapPlayer) {
 			continue;
 		}
 
 		mapPlayer->updateInventoryImbuement();
+		if (mapPlayer->getVocation()->getBaseId() != 5) {
+			continue;
+		}
+
+		if (mapPlayer->getSereneCooldown() > 0) {
+			mapPlayer->setSerene(true);
+			continue;
+		}
+
+		const auto &party = mapPlayer->getParty();
+		if (party) {
+			mapPlayer->setSerene(isPlayerNoBoxed(mapPlayer));
+			continue;
+		}
+
+		mapPlayer->setSerene(true);
 	}
 }
 
@@ -8596,8 +8737,8 @@ void Game::playerFriendSystemAction(const std::shared_ptr<Player> &player, uint8
 }
 
 void Game::playerCyclopediaCharacterInfo(const std::shared_ptr<Player> &player, uint32_t characterID, CyclopediaCharacterInfoType_t characterInfoType, uint16_t entriesPerPage, uint16_t page) {
-	uint32_t playerGUID = player->getGUID();
-	if (characterID != playerGUID) {
+	uint32_t playerID = player->getID();
+	if (playerID != characterID) {
 		// For now allow viewing only our character since we don't have tournaments supported
 		player->sendCyclopediaCharacterNoData(characterInfoType, 2);
 		return;
@@ -8609,9 +8750,6 @@ void Game::playerCyclopediaCharacterInfo(const std::shared_ptr<Player> &player, 
 			break;
 		case CYCLOPEDIA_CHARACTERINFO_GENERALSTATS:
 			player->sendCyclopediaCharacterGeneralStats();
-			break;
-		case CYCLOPEDIA_CHARACTERINFO_COMBATSTATS:
-			player->sendCyclopediaCharacterCombatStats();
 			break;
 		case CYCLOPEDIA_CHARACTERINFO_RECENTDEATHS:
 			player->cyclopedia()->loadDeathHistory(page, entriesPerPage);
@@ -8625,11 +8763,11 @@ void Game::playerCyclopediaCharacterInfo(const std::shared_ptr<Player> &player, 
 		case CYCLOPEDIA_CHARACTERINFO_ITEMSUMMARY: {
 			const ItemsTierCountList &inventoryItems = player->getInventoryItemsId(true);
 			const ItemsTierCountList &storeInboxItems = player->getStoreInboxItemsId();
-			const StashItemList &supplyStashItems = player->getStashItems();
+			const StashItemList &stashItems = player->getStashItems();
 			const ItemsTierCountList &depotBoxItems = player->getDepotChestItemsId();
 			const ItemsTierCountList &inboxItems = player->getDepotInboxItemsId();
 
-			player->sendCyclopediaCharacterItemSummary(inventoryItems, storeInboxItems, supplyStashItems, depotBoxItems, inboxItems);
+			player->sendCyclopediaCharacterItemSummary(inventoryItems, storeInboxItems, stashItems, depotBoxItems, inboxItems);
 			break;
 		}
 		case CYCLOPEDIA_CHARACTERINFO_OUTFITSMOUNTS:
@@ -8646,6 +8784,18 @@ void Game::playerCyclopediaCharacterInfo(const std::shared_ptr<Player> &player, 
 			break;
 		case CYCLOPEDIA_CHARACTERINFO_TITLES:
 			player->sendCyclopediaCharacterTitles();
+			break;
+		case CYCLOPEDIA_CHARACTERINFO_WHEEL:
+			playerOpenWheel(playerID, characterID);
+			break;
+		case CYCLOPEDIA_CHARACTERINFO_OFFENCESTATS:
+			player->sendCyclopediaCharacterOffenceStats();
+			break;
+		case CYCLOPEDIA_CHARACTERINFO_DEFENCESTATS:
+			player->sendCyclopediaCharacterDefenceStats();
+			break;
+		case CYCLOPEDIA_CHARACTERINFO_MISCSTATS:
+			player->sendCyclopediaCharacterMiscStats();
 			break;
 		default:
 			player->sendCyclopediaCharacterNoData(characterInfoType, 1);
@@ -8688,19 +8838,16 @@ std::string Game::generateHighscoreQueryForOurRank(const std::string &categoryNa
 	return query.str();
 }
 
-std::string Game::generateVocationConditionHighscore(uint32_t vocation) {
+std::string Game::generateVocationConditionHighscore(uint32_t searchVocationBaseId) {
 	std::ostringstream queryPart;
-	bool firstVocation = true;
 
 	const auto vocationsMap = g_vocations().getVocations();
-	for (const auto &it : vocationsMap) {
-		const auto &voc = it.second;
-		if (voc->getFromVocation() == vocation) {
-			if (firstVocation) {
-				queryPart << " WHERE `vocation` = " << voc->getId();
-				firstVocation = false;
+	for (const auto &[currentVocationId, vocationPtr] : vocationsMap) {
+		if (vocationPtr->getBaseId() == searchVocationBaseId) {
+			if (vocationPtr->getFromVocation() == static_cast<uint32_t>(currentVocationId)) {
+				queryPart << " WHERE `vocation` = " << currentVocationId;
 			} else {
-				queryPart << " OR `vocation` = " << voc->getId();
+				queryPart << " OR `vocation` = " << currentVocationId;
 			}
 		}
 	}
@@ -9626,7 +9773,7 @@ void Game::playerAnswerModalWindow(uint32_t playerId, uint32_t modalWindowId, ui
 	// offline training, hardcoded
 	if (modalWindowId == std::numeric_limits<uint32_t>::max()) {
 		if (button == 1) {
-			if (choice == SKILL_SWORD || choice == SKILL_AXE || choice == SKILL_CLUB || choice == SKILL_DISTANCE || choice == SKILL_MAGLEVEL) {
+			if (choice == SKILL_SWORD || choice == SKILL_AXE || choice == SKILL_CLUB || choice == SKILL_DISTANCE || choice == SKILL_MAGLEVEL || choice == SKILL_FIST) {
 				auto bedItem = player->getBedItem();
 				if (bedItem && bedItem->sleep(player)) {
 					player->setOfflineTrainingSkill(static_cast<int8_t>(choice));
@@ -11430,4 +11577,41 @@ void Game::createIllusion(const std::shared_ptr<Player> &player, const Outfit_t 
 
 	outfitCondition->setOutfit(outfit);
 	player->addCondition(outfitCondition);
+}
+
+bool Game::isPlayerNoBoxed(const std::shared_ptr<Player> &player) {
+	if (!player) {
+		return true;
+	}
+
+	const Position &centerPos = player->getPosition();
+	uint8_t monsterCount = 0;
+
+	for (int offsetX = -1; offsetX <= 1; ++offsetX) {
+		for (int offsetY = -1; offsetY <= 1; ++offsetY) {
+			if (offsetX == 0 && offsetY == 0) {
+				continue;
+			}
+
+			const auto &tile = g_game().map.getTile(static_cast<uint16_t>(centerPos.x + offsetX), static_cast<uint16_t>(centerPos.y + offsetY), centerPos.z);
+			if (!tile) {
+				continue;
+			}
+
+			const auto &topCreature = tile->getTopCreature();
+			if (!topCreature || topCreature == player) {
+				continue;
+			}
+
+			if (topCreature->getMaster() && topCreature->getMaster()->getPlayer() == player) {
+				continue;
+			}
+
+			if (++monsterCount >= 6) {
+				return false;
+			}
+		}
+	}
+
+	return true;
 }

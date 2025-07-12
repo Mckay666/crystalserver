@@ -1,5 +1,4 @@
 local config = {
-	{ position = { x = 32164, y = 31293, z = 6 }, itemId = 1066 },
 	{ position = { x = 32164, y = 31292, z = 6 }, itemId = 6291 },
 	{ position = { x = 32163, y = 31292, z = 6 }, itemId = 6284 },
 	{ position = { x = 32162, y = 31292, z = 6 }, itemId = 6295 },
@@ -33,6 +32,16 @@ function iceCrack.onStepIn(creature, item, position, fromPosition)
 	if not player then
 		return true
 	end
+
+	local holePos = { x = 32164, y = 31293, z = 6 }
+	local tile = Tile(holePos)
+	if not tile or not tile:getItemById(610) then
+		local holeItem = Game.createItem(610, 1, holePos)
+		if holeItem then
+			holeItem:decay()
+		end
+	end
+
 	if Game.getStorageValue(GlobalStorage.IceCrack) ~= 1 then
 		for a = 1, #config do
 			Game.createItem(config[a].itemId, 1, config[a].position)

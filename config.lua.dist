@@ -195,11 +195,14 @@ momentumChanceFormulaA = 0.05
 momentumChanceFormulaB = 1.9
 momentumChanceFormulaC = 0.05
 
-transcendanceChanceFormulaA = 0.0127
-transcendanceChanceFormulaB = 0.1070
-transcendanceChanceFormulaC = 0.0073
+transcendenceChanceFormulaA = 0.0127
+transcendenceChanceFormulaB = 0.1070
+transcendenceChanceFormulaC = 0.0073
+transcendenceAvatarDuration = 7000
 
-transcendanceAvatarDuration = 7000
+amplificationChanceFormulaA = 0.4
+amplificationChanceFormulaB = 1.7
+amplificationChanceFormulaC = 0.4
 
 -- Bestiary & Bosstiary system
 -- NOTE: bestiaryKillMultiplier, multiplier value of monster killed, default 1
@@ -280,7 +283,6 @@ onlyPremiumAccount = false
 
 -- Customs
 -- NOTE: stashMoving = true, stow an container inside your stash
--- NOTE: stashItemCount, the maximum items quantity in stash
 -- NOTE: depotChest, the non-stackable items will be moved to the selected depot chest(I - XVIII).
 -- NOTE: autoBank = true, the dropped coins from monsters will be automatically deposited to your bank account.
 -- NOTE: toggleGoldPouchAllowAnything will allow players to move items or gold to gold pouch
@@ -296,7 +298,6 @@ onlyPremiumAccount = false
 -- NOTE: if showLootsInBestiary is true, will cause all loots to be shown in the bestiary even if the player has not reached the required number of kills
 -- NOTE: minTownIdToBankTransferFromMain blocks towns less than defined from receiving money transfers
 stashMoving = false
-stashItemCount = 5000
 depotChest = 4
 autoLoot = false
 autoBank = false
@@ -320,7 +321,7 @@ minTownIdToBankTransferFromMain = 4
 -- NOTE: Set toggleSpecialTiles to true if you want to use the system.
 -- NOTE: freeTownId = 8 is Thais city.
 freeTownId = 8
-toggleSpecialTiles = true
+toggleSpecialTiles = false
 
 -- Cosmetics
 -- NOTE: enableSupportOutfit enable GODS and GMS to select support outfit (gamemaster, customer support or community manager)
@@ -514,6 +515,7 @@ chainSystemVipOnly = true
 chainSystemModifyMagic = false
 combatChainDelay = 50
 combatChainTargets = 5
+combatChainSkillFormulaFist = 1.0
 combatChainSkillFormulaAxe = 0.9
 combatChainSkillFormulaClub = 0.7
 combatChainSkillFormulaSword = 1.1

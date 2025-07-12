@@ -30,7 +30,7 @@ monster.changeTarget = {
 }
 
 monster.strategiesTarget = {
-	nearest = 70,
+	nearest = 50,
 	health = 10,
 	damage = 10,
 	random = 10,
@@ -124,6 +124,8 @@ mType.onPlayerAttack = function(monster, attackerPlayer)
 		apparitionType = "Paladin's Apparition"
 	elseif attackerPlayer:isSorcerer() then
 		apparitionType = "Sorcerer's Apparition"
+	elseif attackerPlayer:isMonk() then
+		apparitionType = "Monk's Apparition"
 	end
 
 	if math.random(100) > sameVocationProbability then

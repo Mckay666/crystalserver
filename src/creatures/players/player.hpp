@@ -84,6 +84,7 @@ enum SpeakClasses : uint8_t;
 enum ChannelEvent_t : uint8_t;
 enum SquareColor_t : uint8_t;
 enum Resource_t : uint8_t;
+enum VirtueMonk_t : uint8_t;
 
 using GuildWarVector = std::vector<uint32_t>;
 using StashContainerList = std::vector<std::pair<std::shared_ptr<Item>, uint32_t>>;
@@ -91,6 +92,11 @@ using ItemVector = std::vector<std::shared_ptr<Item>>;
 using UsersMap = std::map<uint32_t, std::shared_ptr<Player>>;
 using InvitedMap = std::map<uint32_t, std::shared_ptr<Player>>;
 using HouseMap = std::map<uint32_t, std::shared_ptr<House>>;
+
+struct CharmInfo {
+	uint16_t raceId = 0;
+	uint8_t tier = 0;
+};
 
 struct ForgeHistory {
 	ForgeAction_t actionType = ForgeAction_t::FUSION;
@@ -196,19 +202,25 @@ public:
 		return CREATURETYPE_PLAYER;
 	}
 
-	uint8_t getLastMount() const;
-	uint8_t getCurrentMount() const;
-	void setCurrentMount(uint8_t mountId);
+	uint16_t getLastMount() const;
+	uint16_t getCurrentMount() const;
+	void setCurrentMount(uint16_t mountId);
 	bool isMounted() const {
 		return defaultOutfit.lookMount != 0;
 	}
 	bool toggleMount(bool mount);
-	bool tameMount(uint8_t mountId);
-	bool untameMount(uint8_t mountId);
+	bool tameMount(uint16_t mountId);
+	bool untameMount(uint16_t mountId);
 	bool hasMount(const std::shared_ptr<Mount> &mount) const;
 	bool hasAnyMount() const;
-	uint8_t getRandomMountId() const;
+	uint16_t getRandomMountId() const;
 	void dismount();
+
+	void setOutfitsModified(bool modified);
+	void setMountsModified(bool modified);
+	bool isOutfitsModified() const;
+	bool isMountsModified() const;
+
 	uint16_t getDodgeChance() const;
 
 	uint8_t isRandomMounted() const;
@@ -216,7 +228,8 @@ public:
 
 	void sendFYIBox(const std::string &message) const;
 
-	void BestiarysendCharms() const;
+	void parseBestiarySendRaces() const;
+	void sendBestiaryCharms() const;
 	void addBestiaryKillCount(uint16_t raceid, uint32_t amount);
 	uint32_t getBestiaryKillCount(uint16_t raceid) const;
 
@@ -408,7 +421,7 @@ public:
 	bool isInMarket() const {
 		return inMarket;
 	}
-	void setSpecialMenuAvailable(bool supplyStashBool, bool marketMenuBool, bool depotSearchBool);
+	void setSpecialMenuAvailable(bool stashBool, bool marketMenuBool, bool depotSearchBool);
 	bool isDepotSearchOpen() const {
 		return depotSearchOnItem.first != 0;
 	}
@@ -421,8 +434,8 @@ public:
 	bool isDepotSearchAvailable() const {
 		return depotSearch;
 	}
-	bool isSupplyStashMenuAvailable() const {
-		return supplyStash;
+	bool isStashMenuAvailable() const {
+		return stashMenuAvailable;
 	}
 	bool isMarketMenuAvailable() const {
 		return marketMenu;
@@ -688,6 +701,15 @@ public:
 	WeaponType_t getWeaponType() const;
 	int32_t getWeaponSkill(const std::shared_ptr<Item> &item) const;
 	void getShieldAndWeapon(std::shared_ptr<Item> &shield, std::shared_ptr<Item> &weapon) const;
+	uint16_t calculateFlatDamageHealing() const;
+	uint16_t attackTotal(uint16_t flatBonus, uint16_t equipment, uint16_t skill) const;
+	uint16_t attackRawTotal(uint16_t flatBonus, uint16_t equipment, uint16_t skill) const;
+	uint16_t getDistanceAttackSkill(const int32_t attackSkill, const int32_t weaponAttack) const;
+	uint16_t getAttackSkill(const std::shared_ptr<Item> &item) const;
+	uint8_t getWeaponSkillId(const std::shared_ptr<Item> &item) const;
+	uint16_t getDefenseEquipment() const;
+	double getCombatTacticsMitigation() const;
+	std::vector<double> getDamageAccuracy(const ItemType &it) const;
 
 	void drainHealth(const std::shared_ptr<Creature> &attacker, int32_t damage) override;
 	void drainMana(const std::shared_ptr<Creature> &attacker, int32_t manaLoss) override;
@@ -696,9 +718,9 @@ public:
 	int32_t getSkill(skills_t skilltype, SkillsId_t skillinfo) const;
 
 	int32_t getArmor() const override;
-	int32_t getDefense() const override;
+	int32_t getDefense(bool sendToClient = false) const override;
 	float getAttackFactor() const override;
-	float getDefenseFactor() const override;
+	float getDefenseFactor(bool sendToClient) const override;
 	float getMitigation() const override;
 
 	void addInFightTicks(bool pzlock = false);
@@ -706,6 +728,7 @@ public:
 	uint64_t getGainedExperience(const std::shared_ptr<Creature> &attacker) const override;
 
 	// combat event functions
+	void onCleanseCondition(ConditionType_t type) const;
 	void onAddCondition(ConditionType_t type) override;
 	void onAddCombatCondition(ConditionType_t type) override;
 	void onEndCondition(ConditionType_t type) override;
@@ -938,16 +961,18 @@ public:
 	void sendCyclopediaCharacterNoData(CyclopediaCharacterInfoType_t characterInfoType, uint8_t errorCode) const;
 	void sendCyclopediaCharacterBaseInformation() const;
 	void sendCyclopediaCharacterGeneralStats() const;
-	void sendCyclopediaCharacterCombatStats() const;
 	void sendCyclopediaCharacterRecentDeaths(uint16_t page, uint16_t pages, const std::vector<RecentDeathEntry> &entries) const;
 	void sendCyclopediaCharacterRecentPvPKills(uint16_t page, uint16_t pages, const std::vector<RecentPvPKillEntry> &entries) const;
 	void sendCyclopediaCharacterAchievements(uint16_t secretsUnlocked, const std::vector<std::pair<Achievement, uint32_t>> &achievementsUnlocked) const;
-	void sendCyclopediaCharacterItemSummary(const ItemsTierCountList &inventoryItems, const ItemsTierCountList &storeInboxItems, const StashItemList &supplyStashItems, const ItemsTierCountList &depotBoxItems, const ItemsTierCountList &inboxItems) const;
+	void sendCyclopediaCharacterItemSummary(const ItemsTierCountList &inventoryItems, const ItemsTierCountList &storeInboxItems, const StashItemList &stashItems, const ItemsTierCountList &depotBoxItems, const ItemsTierCountList &inboxItems) const;
 	void sendCyclopediaCharacterOutfitsMounts() const;
 	void sendCyclopediaCharacterStoreSummary() const;
 	void sendCyclopediaCharacterInspection() const;
 	void sendCyclopediaCharacterBadges() const;
 	void sendCyclopediaCharacterTitles() const;
+	void sendCyclopediaCharacterOffenceStats() const;
+	void sendCyclopediaCharacterDefenceStats() const;
+	void sendCyclopediaCharacterMiscStats() const;
 	void sendHighscoresNoData() const;
 	void sendHighscores(const std::vector<HighscoreCharacter> &characters, uint8_t categoryId, uint32_t vocationId, uint16_t page, uint16_t pages, uint32_t updateTimer) const;
 	void addAsyncOngoingTask(uint64_t flags);
@@ -1063,6 +1088,14 @@ public:
 	void setItemCustomPrice(uint16_t itemId, uint64_t price);
 	uint32_t getCharmPoints() const;
 	void setCharmPoints(uint32_t points);
+	uint32_t getMinorCharmEchoes() const;
+	void setMinorCharmEchoes(uint32_t points);
+	uint32_t getMaxCharmPoints() const;
+	void setMaxCharmPoints(uint32_t points);
+	uint32_t getMaxMinorCharmEchoes() const;
+	void setMaxMinorCharmEchoes(uint32_t points);
+	uint8_t getCharmTier(charmRune_t charmId) const;
+	void setCharmTier(charmRune_t charmId, uint8_t newTier);
 	bool hasCharmExpansion() const;
 	void setCharmExpansion(bool onOff);
 	void setUsedRunesBit(int32_t bit);
@@ -1071,11 +1104,11 @@ public:
 	int32_t getUnlockedRunesBit() const;
 	void setImmuneCleanse(ConditionType_t conditiontype);
 	bool isImmuneCleanse(ConditionType_t conditiontype) const;
-	void setImmuneFear();
+	void setImmuneFear(uint32_t immuneTime = 10000);
 	bool isImmuneFear() const;
 	void setImmuneRoot();
 	bool isImmuneRoot() const;
-	uint16_t parseRacebyCharm(charmRune_t charmId, bool set, uint16_t newRaceid);
+	uint16_t parseRacebyCharm(charmRune_t charmId, bool set = false, uint16_t newRaceid = 0);
 
 	uint64_t getItemCustomPrice(uint16_t itemId, bool buyPrice = false) const;
 	uint16_t getFreeBackpackSlots() const;
@@ -1329,6 +1362,9 @@ public:
 
 	uint16_t getPlayerVocationEnum() const;
 
+	void resetOldCharms();
+	bool isFirstOnStack() const;
+
 	/*******************************************************************************
 	 * Deflect Condition
 	 * Responsible for defining the conditions that when trying to be
@@ -1354,6 +1390,24 @@ public:
 	void removeDeflectCondition(const std::string_view &source, const ConditionType_t &conditionType, const uint8_t &chance);
 
 	void addDeflectCondition(std::string source, ConditionType_t conditionType, uint8_t chance);
+
+	// Monk udpate
+	void sendHarmonyProtocol() const;
+	uint8_t getHarmony() const;
+	void setHarmony(const uint8_t harmonyValue);
+	void addHarmony(const uint8_t harmonyValue);
+	void removeHarmony(const uint8_t harmonyValue);
+	void sendSereneProtocol() const;
+	bool isSerene() const;
+	void setSerene(const bool isSerene);
+	uint64_t getSereneCooldown();
+	void setSereneCooldown(const uint64_t addTime);
+	void sendVirtueProtocol() const;
+	void setVirtue(const VirtueMonk_t virtue);
+	VirtueMonk_t getVirtue() const;
+	uint16_t getMantraTotal() const;
+
+	std::unordered_map<uint16_t, uint8_t> spellActivedAimMap;
 
 private:
 	friend class PlayerLock;
@@ -1445,7 +1499,8 @@ private:
 
 	std::vector<uint16_t> quickLootListItemIds;
 
-	std::vector<OutfitEntry> outfits;
+	std::vector<OutfitEntry> outfitsMap;
+	std::unordered_set<uint16_t> mountsMap;
 	std::vector<FamiliarEntry> familiars;
 
 	std::vector<std::unique_ptr<PreySlot>> preys;
@@ -1583,29 +1638,20 @@ private:
 
 	// Bestiary
 	bool charmExpansion = false;
-	uint16_t charmRuneWound = 0;
-	uint16_t charmRuneEnflame = 0;
-	uint16_t charmRunePoison = 0;
-	uint16_t charmRuneFreeze = 0;
-	uint16_t charmRuneZap = 0;
-	uint16_t charmRuneCurse = 0;
-	uint16_t charmRuneCripple = 0;
-	uint16_t charmRuneParry = 0;
-	uint16_t charmRuneDodge = 0;
-	uint16_t charmRuneAdrenaline = 0;
-	uint16_t charmRuneNumb = 0;
-	uint16_t charmRuneCleanse = 0;
-	uint16_t charmRuneBless = 0;
-	uint16_t charmRuneScavenge = 0;
-	uint16_t charmRuneGut = 0;
-	uint16_t charmRuneLowBlow = 0;
-	uint16_t charmRuneDivine = 0;
-	uint16_t charmRuneVamp = 0;
-	uint16_t charmRuneVoid = 0;
+
+	// outfits and mounts
+	bool mountsModified = false;
+	bool outfitsModified = false;
+
+	std::array<CharmInfo, magic_enum::enum_count<charmRune_t>() + 1> charmsArray = {};
 	uint32_t charmPoints = 0;
+	uint32_t minorCharmEchoes = 0;
+	uint32_t maxCharmPoints = 0;
+	uint32_t maxMinorCharmEchoes = 0;
 	int32_t UsedRunesBit = 0;
 	int32_t UnlockedRunesBit = 0;
-	std::pair<ConditionType_t, uint64_t> cleanseCondition = { CONDITION_NONE, 0 };
+
+	std::vector<std::pair<ConditionType_t, uint64_t>> cleanseConditions;
 
 	std::pair<ConditionType_t, uint64_t> m_fearCondition = { CONDITION_NONE, 0 };
 	std::pair<ConditionType_t, uint64_t> m_rootCondition = { CONDITION_NONE, 0 };
@@ -1637,7 +1683,7 @@ private:
 	bool logged = false;
 	bool scheduledSaleUpdate = false;
 	bool inEventMovePush = false;
-	bool supplyStash = false; // Menu option 'stow, stow container ...'
+	bool stashMenuAvailable = false; // Menu option 'stow, stow container ...'
 	bool marketMenu = false; // Menu option 'show in market'
 	bool exerciseTraining = false;
 	bool moved = false;
@@ -1694,7 +1740,12 @@ private:
 
 	void triggerMomentum();
 	void clearCooldowns();
-	void triggerTranscendance();
+	void triggerTranscendence();
+
+	uint8_t m_harmony = 0;
+	bool m_serene = false;
+	uint64_t m_serene_cooldown = 0;
+	VirtueMonk_t m_virtue = VIRTUE_NONE;
 
 	friend class Game;
 	friend class SaveManager;
@@ -1760,4 +1811,6 @@ private:
 	// unequipping the armor does not influence the boot's imbuement.
 	// When present simultaneously, the one with the greatest chance of occurrence will prevail.
 	std::vector<DeflectCondition> deflectConditions;
+
+	int16_t getMantraAbsorbPercent(int16_t mantraAbsorbValue) const;
 };

@@ -164,11 +164,6 @@ function cultsOfTibiaLevers.onUse(player, item, fromPosition, itemEx, toPosition
 				end
 			end
 
-			if teleport ~= 5 then
-				player:sendCancelMessage("You need exactly 5 players to start this challenge.")
-				return true
-			end
-
 			if isPlayerInArea(frompos, topos) then
 				player:sendCancelMessage("The room is full.")
 				return true
@@ -216,11 +211,6 @@ function cultsOfTibiaLevers.onUse(player, item, fromPosition, itemEx, toPosition
 				end
 			end
 
-			if teleport ~= 5 then
-				player:sendCancelMessage("You need exactly 5 players to start this challenge.")
-				return true
-			end
-
 			if isPlayerInArea(frompos, topos) then
 				player:sendCancelMessage("The room is full.")
 				return true
@@ -266,11 +256,6 @@ function cultsOfTibiaLevers.onUse(player, item, fromPosition, itemEx, toPosition
 					teleport = teleport + 1
 					table.insert(playersInArea, nplayer)
 				end
-			end
-
-			if teleport ~= 1 then
-				player:sendCancelMessage("You need exactly 5 players to start this challenge.")
-				return true
 			end
 
 			if isPlayerInArea(frompos, topos) then
@@ -326,11 +311,6 @@ function cultsOfTibiaLevers.onUse(player, item, fromPosition, itemEx, toPosition
 				end
 			end
 
-			if teleport ~= 5 then
-				player:sendCancelMessage("You need exactly 5 players to start this challenge.")
-				return true
-			end
-
 			if isPlayerInArea(frompos, topos) then
 				player:sendCancelMessage("It looks like there is someone inside.")
 				return true
@@ -374,11 +354,6 @@ function cultsOfTibiaLevers.onUse(player, item, fromPosition, itemEx, toPosition
 					teleport = teleport + 1
 					table.insert(playersInArea, nplayer)
 				end
-			end
-
-			if teleport ~= 5 then
-				player:sendCancelMessage("You need exactly 5 players to start this challenge.")
-				return true
 			end
 
 			if isPlayerInArea(frompos, topos) then
@@ -469,11 +444,6 @@ function cultsOfTibiaLevers.onUse(player, item, fromPosition, itemEx, toPosition
 				end
 			end
 
-			if teleport ~= 5 then
-				player:sendCancelMessage("You need exactly 5 players to start this challenge.")
-				return true
-			end
-
 			if isPlayerInArea(frompos, topos) then
 				player:sendCancelMessage("It looks like there is someone inside.")
 				return true
@@ -517,7 +487,7 @@ function cultsOfTibiaLevers.onUse(player, item, fromPosition, itemEx, toPosition
 		if player:getPosition() == Position(33074, 31884, 15) and item:getId() == 8912 then
 			local teleport = 0
 			local playersInArea = {}
-			local frompos = Position(33023, 31904, 14)
+			local frompos = Position(33023, 31904, 15)
 			local topos = Position(33052, 31932, 15)
 
 			if player:getPosition() == Position(33074, 31884, 15) then
@@ -537,11 +507,6 @@ function cultsOfTibiaLevers.onUse(player, item, fromPosition, itemEx, toPosition
 						table.insert(playersInArea, nplayer)
 					end
 				end
-			end
-
-			if teleport ~= 10 then
-				player:sendCancelMessage("You need exactly 10 players to start this challenge.")
-				return true
 			end
 
 			if isPlayerInArea(frompos, topos) then

@@ -60,6 +60,8 @@ monster.voices = {
 }
 
 monster.loot = {
+	{ id = 39548, chance = 100000, unique = true },
+	{ id = 39754, chance = 100000, unique = true },
 	{ name = "crystal coin", chance = 100000, maxCount = 22 },
 	{ name = "ultimate mana potion", chance = 32653, maxCount = 14 },
 	{ name = "ultimate health potion", chance = 30612, maxCount = 14 },
@@ -87,6 +89,8 @@ monster.loot = {
 	{ name = "naga wand", chance = 200 },
 	{ name = "naga rod", chance = 200 },
 	{ name = "naga crossbow", chance = 200 },
+	{ name = "naga katar", chance = 200 },
+	{ name = "naga tanko", chance = 200 },
 }
 
 monster.attacks = {

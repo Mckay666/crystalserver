@@ -301,6 +301,10 @@ Storage = {
 		MessageStair = 52277,
 		Lever = 52278,
 		Mainland = 52279,
+		Monk = 52280,
+		MonkHealthPotion = 52281,
+		MonkManaPotion = 52282,
+		MonkMeat = 52283,
 	},
 	GraveDanger = {
 		-- Reserved storage from 52310 - 52339
@@ -2849,7 +2853,48 @@ Storage = {
 				AccessDoor = 47952,
 			},
 		},
+		U14_10 = { -- update 14.10 - Reserved Storages 47971 - 47975 reserved to 3 miniBosses (47976, 47977, 47978)
+			NoRestForTheWicked = {
+				Questlog = 47971,
+				KillArbaziloth = {
+					Questline = 47972,
+				},
+				ForgemasterDoor = {
+					Questline = 47973,
+					Reward = 47974,
+				},
+				ForgeMaster = {
+					AccessDoor = 47975,
+				},
+			},
+		},
+		U15_00 = {
+			TheWayOfTheMonk = {
+				Questline = 290100,
+				Questlog = 290101,
+				ShrineCounter = 290500,
+				Shrines = {
+					FirstShrine = 290126,
+					SecondShrine = 290226,
+					ThirdShrine = 290326,
+					FourthShrine = 290426,
+				},
+				MainShrines = {
+					Guidance = 290127,
+					Tranquility = 290128,
+					Respect = 290129,
+					Legacy = 290130,
+					Empathy = 290131,
+					Harmony = 290132,
+					Power = 290133,
+					Knowledge = 290134,
+					Serenity = 290135,
+					Eternity = 290136,
+				},
+			},
+		},
 	},
+
 	-- Reserved storage from 63951 - 63999
 	ThaisExhibition = {
 		FriendshipAmulet = 63951,

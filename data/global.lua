@@ -52,10 +52,6 @@ SERVER_MOTD = configManager.getString(configKeys.SERVER_MOTD)
 
 AUTH_TYPE = configManager.getString(configKeys.AUTH_TYPE)
 
--- Bestiary charm
-GLOBAL_CHARM_GUT = 120 -- 20% more chance to get creature products from looting
-GLOBAL_CHARM_SCAVENGE = 125 -- 25% more chance to get creature products from skinning
-
 -- Event Schedule
 SCHEDULE_LOOT_RATE = 100
 SCHEDULE_EXP_RATE = 100
@@ -124,7 +120,7 @@ end
 
 -- Increase Stamina when Attacking Trainer
 staminaBonus = {
-	target = "Training Machine",
+	target = "Target Dummy",
 	period = configManager.getNumber(configKeys.STAMINA_TRAINER_DELAY) * 60 * 1000, -- time on miliseconds trainers
 	bonus = configManager.getNumber(configKeys.STAMINA_TRAINER_GAIN), -- gain stamina trainers
 	eventsTrainer = {}, -- stamina in trainers
@@ -136,6 +132,7 @@ FAMILIARSNAME = {
 	"knight familiar",
 	"druid familiar",
 	"paladin familiar",
+	"monk familiar",
 }
 
 function addStamina(playerId, ...)

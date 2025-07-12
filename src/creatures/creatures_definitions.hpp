@@ -125,6 +125,7 @@ enum ConditionType_t : uint8_t {
 	CONDITION_BAKRAGORE = 34,
 	CONDITION_GOSHNARTAINT = 35,
 	CONDITION_POWERLESS = 36,
+	CONDITION_AGONY = 37,
 
 	// Need the last ever
 	CONDITION_COUNT
@@ -141,6 +142,7 @@ constexpr bool IsConditionSuppressible(ConditionType_t condition) {
 		CONDITION_DROWN,
 		CONDITION_FREEZING,
 		CONDITION_CURSED,
+		CONDITION_AGONY,
 	};
 
 	return std::ranges::any_of(suppressibleConditions, [condition](const auto &suppressibleCondition) {
@@ -294,13 +296,6 @@ enum CallBackParam_t {
 	CALLBACK_PARAM_CHAINPICKER,
 };
 
-enum charm_t {
-	CHARM_UNDEFINED = 0,
-	CHARM_OFFENSIVE = 1,
-	CHARM_DEFENSIVE = 2,
-	CHARM_PASSIVE = 3,
-};
-
 enum SpeechBubble_t {
 	SPEECHBUBBLE_NONE = 0,
 	SPEECHBUBBLE_NORMAL = 1,
@@ -356,9 +351,23 @@ enum Slots_t : uint8_t {
 	CONST_SLOT_LAST = CONST_SLOT_STORE_INBOX,
 };
 
+enum charmCategory_t {
+	CHARM_ALL = 0,
+	CHARM_MAJOR = 1,
+	CHARM_MINOR = 2,
+};
+
+enum charm_t {
+	CHARM_UNDEFINED = 0,
+	CHARM_OFFENSIVE = 1,
+	CHARM_DEFENSIVE = 2,
+	CHARM_PASSIVE = 3,
+};
+
 enum charmRune_t : int8_t {
 	CHARM_NONE = -1,
-	CHARM_WOUND = 0,
+	CHARM_FIRST = 0,
+	CHARM_WOUND = CHARM_FIRST,
 	CHARM_ENFLAME = 1,
 	CHARM_POISON = 2,
 	CHARM_FREEZE = 3,
@@ -377,8 +386,13 @@ enum charmRune_t : int8_t {
 	CHARM_DIVINE = 16,
 	CHARM_VAMP = 17,
 	CHARM_VOID = 18,
-
-	CHARM_LAST = CHARM_VOID,
+	CHARM_SAVAGE = 19,
+	CHARM_FATAL = 20,
+	CHARM_VOIDINVERSION = 21,
+	CHARM_CARNAGE = 22,
+	CHARM_OVERPOWER = 23,
+	CHARM_OVERFLUX = 24,
+	CHARM_LAST = CHARM_OVERFLUX,
 };
 
 enum ConditionId_t : int8_t {
@@ -746,13 +760,16 @@ enum Vocation_t : uint16_t {
 	VOCATION_ELDER_DRUID = 6,
 	VOCATION_ROYAL_PALADIN = 7,
 	VOCATION_ELITE_KNIGHT = 8,
-	VOCATION_LAST = VOCATION_ELITE_KNIGHT,
+	VOCATION_MONK = 9,
+	VOCATION_EXALTED_MONK = 10,
+	VOCATION_LAST = VOCATION_EXALTED_MONK,
 
 	// Cip tibia client ids
 	VOCATION_KNIGHT_CIP = 1,
 	VOCATION_PALADIN_CIP = 2,
 	VOCATION_SORCERER_CIP = 3,
-	VOCATION_DRUID_CIP = 4
+	VOCATION_DRUID_CIP = 4,
+	VOCATION_MONK_CIP = 5
 };
 
 enum FightMode_t : uint8_t {
@@ -1378,6 +1395,13 @@ enum class CreatureIconQuests_t {
 	BloodDrop,
 };
 
+enum VirtueMonk_t : uint8_t {
+	VIRTUE_NONE = 0,
+	VIRTUE_HARMONY = 1,
+	VIRTUE_JUSTICE = 2,
+	VIRTUE_SUSTAIN = 3,
+};
+
 struct CreatureIcon {
 	CreatureIcon() = default;
 
@@ -1579,6 +1603,7 @@ struct CombatDamage {
 	bool extension = false;
 	std::string exString;
 	bool fatal = false;
+	bool hazardDodge = false;
 
 	int32_t criticalDamage = 0;
 	int32_t criticalChance = 0;
@@ -1595,6 +1620,10 @@ struct CombatDamage {
 	std::string runeSpellName;
 
 	CombatDamage() = default;
+
+	bool isEmpty() const {
+		return primary.type == COMBAT_NONE && primary.value == 0 && secondary.type == COMBAT_NONE && secondary.value == 0 && origin == ORIGIN_NONE && critical == false && affected == 1 && extension == false && exString.empty() && fatal == false && criticalDamage == 0 && criticalChance == 0 && damageMultiplier == 0 && damageReductionMultiplier == 0 && healingMultiplier == 0 && manaLeech == 0 && manaLeechChance == 0 && lifeLeech == 0 && lifeLeechChance == 0 && healingLink == 0 && instantSpellName.empty() && runeSpellName.empty();
+	}
 };
 
 struct RespawnType {
@@ -1682,6 +1711,7 @@ struct Outfit_t {
 	uint8_t lookMountBody = 0;
 	uint8_t lookMountLegs = 0;
 	uint8_t lookMountFeet = 0;
+	uint16_t currentMount = 0;
 	uint16_t lookFamiliarsType = 0;
 };
 
