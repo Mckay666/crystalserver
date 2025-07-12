@@ -163,9 +163,17 @@ void House::setOwner(uint32_t guid, bool updateDatabase /* = true*/, const std::
 void House::updateDoorDescription() const {
 	std::ostringstream ss;
 	if (owner != 0) {
-		ss << "It belongs to house '" << houseName << "'. " << ownerName << " owns this house.";
+		if (isGuildhall()) {
+			ss << "It belongs to guildhall '" << houseName << "'. " << ownerName << " owns this guildhall.";
+		} else {
+			ss << "It belongs to house '" << houseName << "'. " << ownerName << " owns this house.";
+		}
 	} else {
-		ss << "It belongs to house '" << houseName << "'. Nobody owns this house.";
+		if (isGuildhall()) {
+			ss << "It belongs to guildhall '" << houseName << "'. Nobody owns this guildhall.";
+		} else {
+			ss << "It belongs to house '" << houseName << "'. Nobody owns this house.";
+		}
 	}
 
 	if (!g_configManager().getBoolean(CYCLOPEDIA_HOUSE_AUCTION)) {

@@ -45,6 +45,14 @@ function buyHouse.onSay(player, words, param)
 		return true
 	end
 
+	if house:isGuildhall() then
+		if player:getGuildLevel() ~= GUILDLEVEL_LEADER then
+			player:sendCancelMessage("Only the leader of a guild can buy a guild hall.")
+			player:getPosition():sendMagicEffect(CONST_ME_POFF)
+			return true
+		end
+	end
+
 	local maxHousesLimit = configManager.getNumber(configKeys.MAX_HOUSES_LIMIT)
 	local playerHouses = player:getAllHouses()
 	if #playerHouses > maxHousesLimit then
