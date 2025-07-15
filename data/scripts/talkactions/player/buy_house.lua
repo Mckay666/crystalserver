@@ -45,11 +45,13 @@ function buyHouse.onSay(player, words, param)
 		return true
 	end
 
-	if house:isGuildhall() then
-		if player:getGuildLevel() ~= GUILDLEVEL_LEADER then
-			player:sendCancelMessage("Only the leader of a guild can buy a guild hall.")
-			player:getPosition():sendMagicEffect(CONST_ME_POFF)
-			return true
+	if configManager.getBoolean(configKeys.TOGGLE_GUILDHALL_NEED_GUILD) then
+		if house:isGuildhall() then
+			if player:getGuildLevel() ~= GUILDLEVEL_LEADER then
+				player:sendCancelMessage("Only the leader of a guild can buy a guild hall.")
+				player:getPosition():sendMagicEffect(CONST_ME_POFF)
+				return true
+			end
 		end
 	end
 
