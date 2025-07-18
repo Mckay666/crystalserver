@@ -443,48 +443,60 @@ void Npc::onPlayerSellAllLoot(uint32_t playerId, uint16_t itemId, bool ignore, u
 	if (!player) {
 		return;
 	}
+
 	if (itemId == ITEM_GOLD_POUCH) {
 		const auto &container = player->getLootPouch();
 		if (!container) {
 			return;
 		}
-		bool hasMore = false;
-		uint64_t toSellCount = 0;
+
 		phmap::flat_hash_map<uint16_t, uint16_t> toSell;
-		for (ContainerIterator it = container->iterator(); it.hasNext(); it.advance()) {
-			if (toSellCount >= 500) {
-				hasMore = true;
-				break;
-			}
+		uint32_t MAX_BATCH_SIZE = 10;
+		uint32_t processedCount = 0;
+		bool hasMore = false;
+
+		for (ContainerIterator it = container->iterator(); it.hasNext() && !hasMore; it.advance()) {
 			const auto &item = *it;
 			if (!item) {
 				continue;
 			}
+
 			toSell[item->getID()] += item->getItemAmount();
 			if (item->isStackable()) {
-				toSellCount++;
+				MAX_BATCH_SIZE = 100;
+				processedCount++;
 			} else {
-				toSellCount += item->getItemAmount();
+				MAX_BATCH_SIZE = 10;
+				processedCount += item->getItemAmount();
+			}
+
+			if (processedCount >= MAX_BATCH_SIZE) {
+				hasMore = true;
+				break;
 			}
 		}
+
 		for (const auto &[m_itemId, amount] : toSell) {
 			onPlayerSellItem(player, m_itemId, 0, amount, ignore, totalPrice, container);
 		}
+
+		if (hasMore) {
+			g_dispatcher().scheduleEvent(
+				NPC_SELL_TICKS, [this, playerId = player->getID(), itemId, ignore, totalPrice]() { onPlayerSellAllLoot(playerId, itemId, ignore, totalPrice); }, __FUNCTION__
+			);
+			return;
+		}
+
 		auto ss = std::stringstream();
 		if (totalPrice == 0) {
 			ss << "You have no items in your loot pouch.";
 			player->sendTextMessage(MESSAGE_FAILURE, ss.str());
-			return;
+		} else {
+			ss << "You sold all of the items from your loot pouch for ";
+			ss << totalPrice << " gold.";
+			player->sendTextMessage(MESSAGE_LOOK, ss.str());
 		}
-		if (hasMore) {
-			g_dispatcher().scheduleEvent(
-				SCHEDULER_MINTICKS, [this, playerId = player->getID(), itemId, ignore, totalPrice] { onPlayerSellAllLoot(playerId, itemId, ignore, totalPrice); }, __FUNCTION__
-			);
-			return;
-		}
-		ss << "You sold all of the items from your loot pouch for ";
-		ss << totalPrice << " gold.";
-		player->sendTextMessage(MESSAGE_LOOK, ss.str());
+
 		player->openPlayerContainers();
 	}
 }
