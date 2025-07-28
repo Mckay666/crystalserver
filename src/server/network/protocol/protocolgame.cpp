@@ -218,7 +218,7 @@ namespace {
 			}
 		}
 
-		for (uint16_t i = COMBAT_PHYSICALDAMAGE; i <= COMBAT_AGONYDAMAGE; ++i) {
+		for (uint16_t i = COMBAT_FIRST; i <= COMBAT_LAST; ++i) {
 			int16_t vocationAbsorbPercent = player->getVocation()->getAbsorbPercent(indexToCombatType(i));
 			if (vocationAbsorbPercent == 0) {
 				continue;
@@ -591,6 +591,19 @@ void ProtocolGame::login(const std::string &name, uint32_t accountId, OperatingS
 				disconnectClient("Server is currently closed.\nPlease try again later.");
 			}
 			return;
+		}
+
+		bool maxClientsByIP = g_configManager().getBoolean(TOGGLE_MAX_CONNECTIONS_BY_IP);
+		if (maxClientsByIP && !player->hasFlag(PlayerFlags_t::CanAlwaysLogin)) {
+			uint32_t ip = player->getIP();
+			std::vector<std::shared_ptr<Player>> playersByIP = g_game().getPlayersByIP(ip);
+			uint32_t maxConnections = static_cast<uint32_t>(g_configManager().getNumber(MAX_IP_CONNECTIONS));
+			if ((playersByIP.size() + 1) > maxConnections) {
+				std::stringstream maxConnectMsg;
+				maxConnectMsg << "You have been disconnected. The maximum number of connections allowed per IP is " << maxConnections << ".";
+				disconnectClient(maxConnectMsg.str().c_str());
+				return;
+			}
 		}
 
 		if (g_configManager().getBoolean(ONLY_PREMIUM_ACCOUNT) && !player->isPremium() && (player->getGroup()->id < GROUP_TYPE_GAMEMASTER || player->getAccountType() < ACCOUNT_TYPE_GAMEMASTER)) {
@@ -8601,7 +8614,7 @@ void ProtocolGame::sendUpdateImpactTracker(CombatType_t type, int32_t amount) {
 	}
 
 	auto clientElement = getCipbiaElement(type);
-	if (clientElement == CIPBIA_ELEMENTAL_UNDEFINED) {
+	if (clientElement < CIPBIA_ELEMENTAL_FIRST || clientElement > CIPBIA_ELEMENTAL_LAST) {
 		return;
 	}
 
@@ -8624,7 +8637,7 @@ void ProtocolGame::sendUpdateInputAnalyzer(CombatType_t type, int32_t amount, co
 	}
 
 	auto clientElement = getCipbiaElement(type);
-	if (clientElement == CIPBIA_ELEMENTAL_UNDEFINED) {
+	if (clientElement < CIPBIA_ELEMENTAL_FIRST || clientElement > CIPBIA_ELEMENTAL_LAST) {
 		return;
 	}
 
