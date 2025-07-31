@@ -1155,6 +1155,17 @@ std::vector<std::shared_ptr<Player>> Game::getPlayersByAccount(const std::shared
 	return ret;
 }
 
+std::vector<std::shared_ptr<Player>> Game::getPlayersByIP(const uint32_t &ip, const uint32_t &mask) {
+	std::vector<std::shared_ptr<Player>> playersList;
+	for (const auto &[playerId, player] : players) {
+		if (!player->isRemoved() && ((player->getIP() & mask) == (ip & mask))) {
+			playersList.push_back(player);
+		}
+	}
+
+	return playersList;
+}
+
 bool Game::internalPlaceCreature(const std::shared_ptr<Creature> &creature, const Position &pos, bool extendedPos /*=false*/, bool forced /*= false*/, bool creatureCheck /*= false*/) {
 	if (creature->getParent() != nullptr) {
 		return false;
@@ -3201,6 +3212,16 @@ ReturnValue Game::internalCollectManagedItems(const std::shared_ptr<Player> &pla
 		}
 	}
 
+	if (!player->quickLootListItemIds.empty()) {
+		uint16_t itemId = item->getID();
+		bool isInList = std::ranges::find(player->quickLootListItemIds, itemId) != player->quickLootListItemIds.end();
+		if (player->quickLootFilter == QuickLootFilter_t::QUICKLOOTFILTER_ACCEPTEDLOOT && !isInList) {
+			return RETURNVALUE_NOTPOSSIBLE;
+		} else if (player->quickLootFilter == QuickLootFilter_t::QUICKLOOTFILTER_SKIPPEDLOOT && isInList) {
+			return RETURNVALUE_NOTPOSSIBLE;
+		}
+	}
+
 	bool fallbackConsumed = false;
 	std::shared_ptr<Container> lootContainer = findManagedContainer(player, fallbackConsumed, category, isLootContainer);
 	if (!lootContainer) {
@@ -4843,56 +4864,23 @@ void Game::playerStashWithdraw(uint32_t playerId, uint16_t itemId, uint32_t coun
 		return;
 	}
 
-	uint16_t freeSlots = player->getFreeBackpackSlots();
-	auto stashContainer = player->getManagedContainer(getObjectCategory(it), false);
-	if (stashContainer && !(player->quickLootFallbackToMainContainer)) {
-		freeSlots = stashContainer->getFreeSlots();
-	}
-
-	if (freeSlots == 0) {
-		player->sendCancelMessage(RETURNVALUE_NOTENOUGHROOM);
-		return;
-	}
-
 	if (player->getFreeCapacity() < 100) {
 		player->sendCancelMessage(RETURNVALUE_NOTENOUGHCAPACITY);
 		return;
 	}
 
-	int32_t NDSlots = ((freeSlots) - (count < it.stackSize ? 1 : (count / it.stackSize)));
-	uint32_t SlotsWith = count;
-	uint32_t noSlotsWith = 0;
-
-	if (NDSlots <= 0) {
-		SlotsWith = (freeSlots * it.stackSize);
-		noSlotsWith = (count - SlotsWith);
+	auto maxWithdrawLimit = static_cast<uint32_t>(g_configManager().getNumber(STASH_MANAGE_AMOUNT));
+	if (count > maxWithdrawLimit) {
+		std::stringstream limitMessage;
+		limitMessage << "You can only withdraw up to " << maxWithdrawLimit << " items at a time from the stash.";
+		player->sendTextMessage(MESSAGE_EVENT_ADVANCE, limitMessage.str());
+		count = maxWithdrawLimit;
 	}
 
-	uint32_t capWith = count;
-	uint32_t noCapWith = 0;
-	if (player->getFreeCapacity() < (count * it.weight)) {
-		capWith = (player->getFreeCapacity() / it.weight);
-		noCapWith = (count - capWith);
-	}
-
-	std::stringstream ss;
-	uint32_t WithdrawCount = (SlotsWith > capWith ? capWith : SlotsWith);
-	uint32_t NoWithdrawCount = (noSlotsWith < noCapWith ? noCapWith : noSlotsWith);
-	const char* NoWithdrawMsg = (noSlotsWith < noCapWith ? "capacity" : "slots");
-
-	if (WithdrawCount != count) {
-		ss << "Retrieved " << WithdrawCount << "x " << it.name << ".\n";
-		ss << NoWithdrawCount << "x are impossible to retrieve due to insufficient inventory " << NoWithdrawMsg << ".";
-	} else {
-		ss << "Retrieved " << WithdrawCount << "x " << it.name << '.';
-	}
-
-	player->sendTextMessage(MESSAGE_STATUS, ss.str());
-
-	if (player->withdrawItem(itemId, WithdrawCount)) {
-		player->addItemFromStash(it.id, WithdrawCount);
-	} else {
-		player->sendCancelMessage(RETURNVALUE_NOTPOSSIBLE);
+	auto ret = player->addItemFromStash(itemId, count);
+	if (ret != RETURNVALUE_NOERROR) {
+		g_logger().warn("[{}] failed to retrieve item: {}, to player: {}, from the stash", __FUNCTION__, itemId, player->getName());
+		player->sendCancelMessage(ret);
 	}
 
 	// Refresh depot search window if necessary
@@ -6816,7 +6804,7 @@ bool Game::combatBlockHit(CombatDamage &damage, const std::shared_ptr<Creature> 
 		InternalGame::sendBlockEffect(primaryBlockType, damage.primary.type, target->getPosition(), attacker);
 		// Damage reflection primary
 		if (!damage.extension && attacker) {
-			const auto &attackerMonster = attacker->getMonster();
+			std::shared_ptr<Monster> attackerMonster = attacker->getMonster();
 			if (attackerMonster && targetPlayer && damage.primary.type != COMBAT_HEALING) {
 				// Charm rune (target as player)
 				const auto &mType = attackerMonster->getMonsterType();
@@ -10192,6 +10180,23 @@ void Game::updatePlayerSaleItems(uint32_t playerId) {
 	player->setScheduledSaleUpdate(false);
 }
 
+void Game::addDeadPlayer(const std::shared_ptr<Player> &player) {
+	m_deadPlayers[player->getName()] = player;
+}
+
+void Game::removeDeadPlayer(const std::string &playerName) {
+	m_deadPlayers.erase(playerName);
+}
+
+std::shared_ptr<Player> Game::getDeadPlayer(const std::string &playerName) {
+	auto it = m_deadPlayers.find(playerName);
+	if (it != m_deadPlayers.end()) {
+		return it->second.lock();
+	}
+
+	return nullptr;
+}
+
 void Game::addPlayer(const std::shared_ptr<Player> &player) {
 	const std::string &lowercase_name = asLowerCaseString(player->getName());
 	mappedPlayerNames[lowercase_name] = player;
@@ -10721,54 +10726,14 @@ bool Game::addItemStoreInbox(const std::shared_ptr<Player> &player, uint32_t ite
 	return true;
 }
 
-void Game::addPlayerUniqueLogin(const std::shared_ptr<Player> &player) {
-	if (!player) {
-		g_logger().error("Attempted to add null player to unique player names list");
-		return;
-	}
-
-	const std::string &lowercase_name = asLowerCaseString(player->getName());
-	m_uniqueLoginPlayerNames[lowercase_name] = player;
-}
-
-std::shared_ptr<Player> Game::getPlayerUniqueLogin(const std::string &playerName) const {
-	if (playerName.empty()) {
-		g_logger().error("Attempted to get player with empty name string");
-		return nullptr;
-	}
-
-	auto it = m_uniqueLoginPlayerNames.find(asLowerCaseString(playerName));
-	return (it != m_uniqueLoginPlayerNames.end()) ? it->second.lock() : nullptr;
-}
-
-void Game::removePlayerUniqueLogin(const std::string &playerName) {
-	if (playerName.empty()) {
-		g_logger().error("Attempted to remove player with empty name string from unique player names list");
-		return;
-	}
-
-	const std::string &lowercase_name = asLowerCaseString(playerName);
-	m_uniqueLoginPlayerNames.erase(lowercase_name);
-}
-
-void Game::removePlayerUniqueLogin(const std::shared_ptr<Player> &player) {
-	if (!player) {
-		g_logger().error("Attempted to remove null player from unique player names list.");
-		return;
-	}
-
-	const std::string &lowercaseName = asLowerCaseString(player->getName());
-	m_uniqueLoginPlayerNames.erase(lowercaseName);
-}
-
 void Game::playerCheckActivity(const std::string &playerName, int interval) {
-	const auto &player = getPlayerUniqueLogin(playerName);
+	const auto &player = getPlayerByName(playerName);
 	if (!player) {
 		return;
 	}
 
 	if (player->getIP() == 0) {
-		g_game().removePlayerUniqueLogin(playerName);
+		g_game().removeDeadPlayer(playerName);
 		g_logger().info("Player with name '{}' has logged out due to exited in death screen", player->getName());
 		player->disconnect();
 		return;
@@ -10782,8 +10747,8 @@ void Game::playerCheckActivity(const std::string &playerName, int interval) {
 		player->m_deathTime += interval;
 		const int32_t kickAfterMinutes = g_configManager().getNumber(KICK_AFTER_MINUTES);
 		if (player->m_deathTime > (kickAfterMinutes * 60000) + 60000) {
+			g_game().removeDeadPlayer(playerName);
 			g_logger().info("Player with name '{}' has logged out due to inactivity after death", player->getName());
-			g_game().removePlayerUniqueLogin(playerName);
 			player->disconnect();
 			return;
 		}

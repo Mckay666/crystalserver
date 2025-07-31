@@ -659,8 +659,11 @@ public:
 	static bool lastHitIsPlayer(const std::shared_ptr<Creature> &lastHitCreature);
 
 	// stash functions
-	bool addItemFromStash(uint16_t itemId, uint32_t itemCount);
+	ReturnValue addItemFromStash(uint16_t itemId, uint32_t itemCount);
 	void stowItem(const std::shared_ptr<Item> &item, uint32_t count, bool allItems);
+
+	std::vector<std::shared_ptr<Container>> getAllContainers(bool onlyFromMainBackpack = true) const;
+	std::shared_ptr<Container> getBackpack() const;
 
 	ReturnValue removeItem(const std::shared_ptr<Item> &item, uint32_t count = 0);
 
@@ -1735,12 +1738,8 @@ private:
 	uint16_t getLookCorpse() const override;
 	void getPathSearchParams(const std::shared_ptr<Creature> &creature, FindPathParams &fpp) override;
 
-	void setDead(bool isDead) {
-		m_isDead = isDead;
-	}
-	bool isDead() const override {
-		return m_isDead;
-	}
+	void setDead(bool isDead);
+	bool isDead() const override;
 
 	void triggerMomentum();
 	void clearCooldowns();
