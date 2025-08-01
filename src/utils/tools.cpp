@@ -22,6 +22,7 @@
 #include "items/item.hpp"
 #include "lua/lua_definitions.hpp"
 #include "utils/const.hpp"
+#include "utils/simd.hpp"
 #include "config/configmanager.hpp"
 #include "game/movement/position.hpp"
 
