@@ -233,7 +233,6 @@ extern const std::unordered_set<std::string_view> harmonySpells;
 int tfs_strncmp(const char* s1, const char* s2, size_t n);
 int tfs_strcmp(const char* s1, const char* s2);
 #else
-#define tfs_strncmp strncmp
-#define tfs_strcmp strcmp
+	#define tfs_strncmp strncmp
+	#define tfs_strcmp strcmp
 #endif
-
