@@ -23,6 +23,7 @@
 #include "game/scheduling/dispatcher.hpp"
 #include "server/network/webhook/webhook.hpp"
 #include "utils/pugicast.hpp"
+#include "utils/tools.hpp"
 
 Raids::Raids() {
 	scriptInterface.initState();
@@ -305,17 +306,17 @@ bool AnnounceEvent::configureRaidEvent(const pugi::xml_node &eventNode) {
 	const pugi::xml_attribute typeAttribute = eventNode.attribute("type");
 	if (typeAttribute) {
 		const std::string tmpStrValue = asLowerCaseString(typeAttribute.as_string());
-		if (tmpStrValue == "warning") {
+		if (!tfs_strcmp(tmpStrValue.c_str(), "warning")) {
 			messageType = MESSAGE_GAME_HIGHLIGHT;
-		} else if (tmpStrValue == "event") {
+		} else if (!tfs_strcmp(tmpStrValue.c_str(), "event")) {
 			messageType = MESSAGE_EVENT_ADVANCE;
-		} else if (tmpStrValue == "default") {
+		} else if (!tfs_strcmp(tmpStrValue.c_str(), "default")) {
 			messageType = MESSAGE_EVENT_ADVANCE;
-		} else if (tmpStrValue == "description") {
+		} else if (!tfs_strcmp(tmpStrValue.c_str(), "description")) {
 			messageType = MESSAGE_LOOK;
-		} else if (tmpStrValue == "smallstatus") {
+		} else if (!tfs_strcmp(tmpStrValue.c_str(), "smallstatus")) {
 			messageType = MESSAGE_FAILURE;
-		} else if (tmpStrValue == "redconsole") {
+		} else if (!tfs_strcmp(tmpStrValue.c_str(), "redconsole")) {
 			messageType = MESSAGE_GAMEMASTER_CONSOLE;
 		} else {
 			g_logger().warn("{} - "

@@ -108,11 +108,11 @@ int WeaponFunctions::luaWeaponAction(lua_State* L) {
 	if (weapon) {
 		std::string typeName = Lua::getString(L, 2);
 		const std::string tmpStr = asLowerCaseString(typeName);
-		if (tmpStr == "removecount") {
+		if (!tfs_strcmp(tmpStr.c_str(), "removecount")) {
 			weapon->action = WEAPONACTION_REMOVECOUNT;
-		} else if (tmpStr == "removecharge") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "removecharge")) {
 			weapon->action = WEAPONACTION_REMOVECHARGE;
-		} else if (tmpStr == "move") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "move")) {
 			weapon->action = WEAPONACTION_MOVE;
 		} else {
 			g_logger().error("[WeaponFunctions::luaWeaponAction] - "
@@ -310,17 +310,17 @@ int WeaponFunctions::luaWeaponElement(lua_State* L) {
 		if (!Lua::getNumber<CombatType_t>(L, 2)) {
 			std::string element = Lua::getString(L, 2);
 			const std::string tmpStrValue = asLowerCaseString(element);
-			if (tmpStrValue == "earth") {
+			if (!tfs_strcmp(tmpStrValue.c_str(), "earth")) {
 				weapon->params.combatType = COMBAT_EARTHDAMAGE;
-			} else if (tmpStrValue == "ice") {
+			} else if (!tfs_strcmp(tmpStrValue.c_str(), "ice")) {
 				weapon->params.combatType = COMBAT_ICEDAMAGE;
-			} else if (tmpStrValue == "energy") {
+			} else if (!tfs_strcmp(tmpStrValue.c_str(), "energy")) {
 				weapon->params.combatType = COMBAT_ENERGYDAMAGE;
-			} else if (tmpStrValue == "fire") {
+			} else if (!tfs_strcmp(tmpStrValue.c_str(), "fire")) {
 				weapon->params.combatType = COMBAT_FIREDAMAGE;
-			} else if (tmpStrValue == "death") {
+			} else if (!tfs_strcmp(tmpStrValue.c_str(), "death")) {
 				weapon->params.combatType = COMBAT_DEATHDAMAGE;
-			} else if (tmpStrValue == "holy") {
+			} else if (!tfs_strcmp(tmpStrValue.c_str(), "holy")) {
 				weapon->params.combatType = COMBAT_HOLYDAMAGE;
 			} else {
 				g_logger().warn("[WeaponFunctions:luaWeaponElement] - "
@@ -552,7 +552,7 @@ int WeaponFunctions::luaWeaponSlotType(lua_State* L) {
 		ItemType &it = Item::items.getItemType(id);
 		const std::string slot = Lua::getString(L, 2);
 
-		if (slot == "two-handed") {
+		if (!tfs_strcmp(slot.c_str(), "two-handed")) {
 			it.slotPosition = SLOTP_TWO_HAND;
 		} else {
 			it.slotPosition = SLOTP_HAND;
@@ -572,9 +572,9 @@ int WeaponFunctions::luaWeaponAmmoType(lua_State* L) {
 		ItemType &it = Item::items.getItemType(id);
 		std::string type = Lua::getString(L, 2);
 
-		if (type == "arrow") {
+		if (!tfs_strcmp(type.c_str(), "arrow")) {
 			it.ammoType = AMMO_ARROW;
-		} else if (type == "bolt") {
+		} else if (!tfs_strcmp(type.c_str(), "bolt")) {
 			it.ammoType = AMMO_BOLT;
 		} else {
 			g_logger().warn("[WeaponFunctions:luaWeaponAmmoType] - "
@@ -629,17 +629,17 @@ int WeaponFunctions::luaWeaponExtraElement(lua_State* L) {
 		if (!Lua::getNumber<CombatType_t>(L, 3)) {
 			std::string element = Lua::getString(L, 3);
 			const std::string tmpStrValue = asLowerCaseString(element);
-			if (tmpStrValue == "earth") {
+			if (!tfs_strcmp(tmpStrValue.c_str(), "earth")) {
 				it.abilities->elementType = COMBAT_EARTHDAMAGE;
-			} else if (tmpStrValue == "ice") {
+			} else if (!tfs_strcmp(tmpStrValue.c_str(), "ice")) {
 				it.abilities->elementType = COMBAT_ICEDAMAGE;
-			} else if (tmpStrValue == "energy") {
+			} else if (!tfs_strcmp(tmpStrValue.c_str(), "energy")) {
 				it.abilities->elementType = COMBAT_ENERGYDAMAGE;
-			} else if (tmpStrValue == "fire") {
+			} else if (!tfs_strcmp(tmpStrValue.c_str(), "fire")) {
 				it.abilities->elementType = COMBAT_FIREDAMAGE;
-			} else if (tmpStrValue == "death") {
+			} else if (!tfs_strcmp(tmpStrValue.c_str(), "death")) {
 				it.abilities->elementType = COMBAT_DEATHDAMAGE;
-			} else if (tmpStrValue == "holy") {
+			} else if (!tfs_strcmp(tmpStrValue.c_str(), "holy")) {
 				it.abilities->elementType = COMBAT_HOLYDAMAGE;
 			} else {
 				g_logger().warn("[WeaponFunctions:luaWeaponExtraElement] - "

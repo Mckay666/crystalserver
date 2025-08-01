@@ -54,29 +54,29 @@ int CreatureEventFunctions::luaCreatureEventType(lua_State* L) {
 	if (creatureEvent) {
 		std::string typeName = Lua::getString(L, 2);
 		const std::string tmpStr = asLowerCaseString(typeName);
-		if (tmpStr == "login") {
+		if (!tfs_strcmp(tmpStr.c_str(), "login")) {
 			creatureEvent->setEventType(CREATURE_EVENT_LOGIN);
-		} else if (tmpStr == "logout") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "logout")) {
 			creatureEvent->setEventType(CREATURE_EVENT_LOGOUT);
-		} else if (tmpStr == "think") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "think")) {
 			creatureEvent->setEventType(CREATURE_EVENT_THINK);
-		} else if (tmpStr == "preparedeath") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "preparedeath")) {
 			creatureEvent->setEventType(CREATURE_EVENT_PREPAREDEATH);
-		} else if (tmpStr == "death") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "death")) {
 			creatureEvent->setEventType(CREATURE_EVENT_DEATH);
-		} else if (tmpStr == "kill") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "kill")) {
 			creatureEvent->setEventType(CREATURE_EVENT_KILL);
-		} else if (tmpStr == "advance") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "advance")) {
 			creatureEvent->setEventType(CREATURE_EVENT_ADVANCE);
-		} else if (tmpStr == "modalwindow") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "modalwindow")) {
 			creatureEvent->setEventType(CREATURE_EVENT_MODALWINDOW);
-		} else if (tmpStr == "textedit") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "textedit")) {
 			creatureEvent->setEventType(CREATURE_EVENT_TEXTEDIT);
-		} else if (tmpStr == "healthchange") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "healthchange")) {
 			creatureEvent->setEventType(CREATURE_EVENT_HEALTHCHANGE);
-		} else if (tmpStr == "manachange") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "manachange")) {
 			creatureEvent->setEventType(CREATURE_EVENT_MANACHANGE);
-		} else if (tmpStr == "extendedopcode") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "extendedopcode")) {
 			creatureEvent->setEventType(CREATURE_EVENT_EXTENDED_OPCODE);
 		} else {
 			g_logger().error("[CreatureEventFunctions::luaCreatureEventType] - "

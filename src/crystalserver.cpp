@@ -41,6 +41,7 @@
 #include "server/network/protocol/protocolstatus.hpp"
 #include "server/network/webhook/webhook.hpp"
 #include "creatures/players/vocations/vocation.hpp"
+#include "utils/tools.hpp"
 
 CrystalServer::CrystalServer(
 	Logger &logger,
@@ -151,11 +152,11 @@ int CrystalServer::run() {
 
 void CrystalServer::setWorldType() {
 	const std::string worldType = asLowerCaseString(g_configManager().getString(WORLD_TYPE));
-	if (worldType == "open" || worldType == "2" || worldType == "openpvp" || worldType == "pvp" || worldType == "normal") {
+	if (!tfs_strcmp(worldType.c_str(), "pvp")) {
 		g_game().setWorldType(WORLDTYPE_OPEN);
-	} else if (worldType == "optional" || worldType == "1" || worldType == "optionalpvp" || worldType == "safe" || worldType == "nopvp" || worldType == "no-pvp" || worldType == "secure") {
+	} else if (!tfs_strcmp(worldType.c_str(), "no-pvp")) {
 		g_game().setWorldType(WORLDTYPE_OPTIONAL);
-	} else if (worldType == "hardcore" || worldType == "3" || worldType == "hardcorepvp" || worldType == "war" || worldType == "pvp-enforced" || worldType == "enforced") {
+	} else if (!tfs_strcmp(worldType.c_str(), "pvp-enforced")) {
 		g_game().setWorldType(WORLDTYPE_HARDCORE);
 	} else {
 		throw FailedToInitializeCrystalServer(
@@ -187,13 +188,13 @@ void CrystalServer::setupHousesRent() {
 	RentPeriod_t rentPeriod;
 	std::string strRentPeriod = asLowerCaseString(g_configManager().getString(HOUSE_RENT_PERIOD));
 
-	if (strRentPeriod == "yearly") {
+	if (!tfs_strcmp(strRentPeriod.c_str(), "yearly")) {
 		rentPeriod = RENTPERIOD_YEARLY;
-	} else if (strRentPeriod == "weekly") {
-		rentPeriod = RENTPERIOD_WEEKLY;
-	} else if (strRentPeriod == "monthly") {
+	} else if (!tfs_strcmp(strRentPeriod.c_str(), "monthly")) {
 		rentPeriod = RENTPERIOD_MONTHLY;
-	} else if (strRentPeriod == "daily") {
+	} else if (!tfs_strcmp(strRentPeriod.c_str(), "weekly")) {
+		rentPeriod = RENTPERIOD_WEEKLY;
+	} else if (!tfs_strcmp(strRentPeriod.c_str(), "daily")) {
 		rentPeriod = RENTPERIOD_DAILY;
 	} else {
 		rentPeriod = RENTPERIOD_NEVER;

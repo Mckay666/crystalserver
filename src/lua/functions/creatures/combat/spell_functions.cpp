@@ -118,10 +118,10 @@ int SpellFunctions::luaSpellCreate(lua_State* L) {
 			return 1;
 		}
 
-		const std::string tmp = asLowerCaseString(arg);
-		if (tmp == "instant") {
+		const std::string typeName = asLowerCaseString(arg);
+		if (!tfs_strcmp(typeName.c_str(), "instant")) {
 			spellType = SPELL_INSTANT;
-		} else if (tmp == "rune") {
+		} else if (!tfs_strcmp(typeName.c_str(), "rune")) {
 			spellType = SPELL_RUNE;
 		}
 	}
@@ -671,7 +671,7 @@ int SpellFunctions::luaSpellVocation(lua_State* L) {
 					std::vector<std::string> vocList = explodeString(Lua::getString(L, 2 + i), ";");
 					const int32_t vocationId = g_vocations().getVocationId(vocList[0]);
 					if (!vocList.empty()) {
-						if (vocList[1] == "true") {
+						if (!tfs_strcmp(vocList[1].c_str(), "true")) {
 							spell->addVocMap(vocationId, true);
 						} else {
 							spell->addVocMap(vocationId, false);

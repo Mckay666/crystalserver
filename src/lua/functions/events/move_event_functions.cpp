@@ -57,22 +57,22 @@ int MoveEventFunctions::luaMoveEventType(lua_State* L) {
 	if (moveevent) {
 		std::string typeName = Lua::getString(L, 2);
 		const std::string tmpStr = asLowerCaseString(typeName);
-		if (tmpStr == "stepin") {
+		if (!tfs_strcmp(tmpStr.c_str(), "stepin")) {
 			moveevent->setEventType(MOVE_EVENT_STEP_IN);
 			moveevent->stepFunction = moveevent->StepInField;
-		} else if (tmpStr == "stepout") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "stepout")) {
 			moveevent->setEventType(MOVE_EVENT_STEP_OUT);
 			moveevent->stepFunction = moveevent->StepOutField;
-		} else if (tmpStr == "equip") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "equip")) {
 			moveevent->setEventType(MOVE_EVENT_EQUIP);
 			moveevent->equipFunction = moveevent->EquipItem;
-		} else if (tmpStr == "deequip") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "deequip")) {
 			moveevent->setEventType(MOVE_EVENT_DEEQUIP);
 			moveevent->equipFunction = moveevent->DeEquipItem;
-		} else if (tmpStr == "additem") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "additem")) {
 			moveevent->setEventType(MOVE_EVENT_ADD_ITEM_ITEMTILE);
 			moveevent->moveFunction = moveevent->AddItemField;
-		} else if (tmpStr == "removeitem") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "removeitem")) {
 			moveevent->setEventType(MOVE_EVENT_REMOVE_ITEM);
 			moveevent->moveFunction = moveevent->RemoveItemField;
 		} else {
@@ -132,27 +132,27 @@ int MoveEventFunctions::luaMoveEventSlot(lua_State* L) {
 
 	if (moveevent->getEventType() == MOVE_EVENT_EQUIP || moveevent->getEventType() == MOVE_EVENT_DEEQUIP) {
 		std::string slotName = asLowerCaseString(Lua::getString(L, 2));
-		if (slotName == "head") {
+		if (!tfs_strcmp(slotName.c_str(), "head")) {
 			moveevent->setSlot(SLOTP_HEAD);
-		} else if (slotName == "necklace") {
+		} else if (!tfs_strcmp(slotName.c_str(), "necklace")) {
 			moveevent->setSlot(SLOTP_NECKLACE);
-		} else if (slotName == "backpack") {
+		} else if (!tfs_strcmp(slotName.c_str(), "backpack")) {
 			moveevent->setSlot(SLOTP_BACKPACK);
-		} else if (slotName == "armor" || slotName == "body") {
+		} else if (!tfs_strcmp(slotName.c_str(), "armor") || !tfs_strcmp(slotName.c_str(), "body")) {
 			moveevent->setSlot(SLOTP_ARMOR);
-		} else if (slotName == "right-hand") {
+		} else if (!tfs_strcmp(slotName.c_str(), "right-hand")) {
 			moveevent->setSlot(SLOTP_RIGHT);
-		} else if (slotName == "left-hand") {
+		} else if (!tfs_strcmp(slotName.c_str(), "left-hand")) {
 			moveevent->setSlot(SLOTP_LEFT);
-		} else if (slotName == "hand" || slotName == "shield") {
+		} else if (!tfs_strcmp(slotName.c_str(), "hand") || !tfs_strcmp(slotName.c_str(), "shield")) {
 			moveevent->setSlot(SLOTP_RIGHT | SLOTP_LEFT);
-		} else if (slotName == "legs") {
+		} else if (!tfs_strcmp(slotName.c_str(), "legs")) {
 			moveevent->setSlot(SLOTP_LEGS);
-		} else if (slotName == "feet") {
+		} else if (!tfs_strcmp(slotName.c_str(), "feet")) {
 			moveevent->setSlot(SLOTP_FEET);
-		} else if (slotName == "ring") {
+		} else if (!tfs_strcmp(slotName.c_str(), "ring")) {
 			moveevent->setSlot(SLOTP_RING);
-		} else if (slotName == "ammo") {
+		} else if (!tfs_strcmp(slotName.c_str(), "ammo")) {
 			moveevent->setSlot(SLOTP_AMMO);
 		} else {
 			g_logger().warn("[MoveEventFunctions::luaMoveEventSlot] - "

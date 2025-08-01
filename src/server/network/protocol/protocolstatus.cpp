@@ -23,6 +23,7 @@
 #include "game/game.hpp"
 #include "game/scheduling/dispatcher.hpp"
 #include "server/network/message/outputmessage.hpp"
+#include "utils/tools.hpp"
 
 std::map<uint32_t, int64_t> ProtocolStatus::ipConnectMap;
 const uint64_t ProtocolStatus::start = OTSYS_TIME(true);
@@ -45,7 +46,7 @@ void ProtocolStatus::onRecvFirstMessage(NetworkMessage &msg) {
 	switch (msg.getByte()) {
 		// XML info protocol
 		case 0xFF: {
-			if (msg.getString(4) == "info") {
+			if (!tfs_strcmp(msg.getString(4).c_str(), "info")) {
 				g_dispatcher().addEvent(
 					[self = std::static_pointer_cast<ProtocolStatus>(shared_from_this())] {
 						self->sendStatusString();

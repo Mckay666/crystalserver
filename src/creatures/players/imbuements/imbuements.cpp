@@ -211,30 +211,30 @@ bool Imbuements::loadFromXml(bool /* reloading */) {
 
 						uint8_t skillId;
 						std::string tmpStrValue = asLowerCaseString(attr.as_string());
-						if (tmpStrValue == "sword") {
+						if (!tfs_strcmp(tmpStrValue.c_str(), "sword")) {
 							skillId = SKILL_SWORD;
-						} else if (tmpStrValue == "axe") {
+						} else if (!tfs_strcmp(tmpStrValue.c_str(), "axe")) {
 							skillId = SKILL_AXE;
-						} else if (tmpStrValue == "club") {
+						} else if (!tfs_strcmp(tmpStrValue.c_str(), "club")) {
 							skillId = SKILL_CLUB;
-						} else if ((tmpStrValue == "dist") || (tmpStrValue == "distance")) {
+						} else if ((!tfs_strcmp(tmpStrValue.c_str(), "dist") || (!tfs_strcmp(tmpStrValue.c_str(), "distance")))) {
 							skillId = SKILL_DISTANCE;
-						} else if (tmpStrValue == "fish") {
+						} else if (!tfs_strcmp(tmpStrValue.c_str(), "fish")) {
 							skillId = SKILL_FISHING;
-						} else if (tmpStrValue == "shield") {
+						} else if (!tfs_strcmp(tmpStrValue.c_str(), "shield")) {
 							skillId = SKILL_SHIELD;
-						} else if (tmpStrValue == "fist") {
+						} else if (!tfs_strcmp(tmpStrValue.c_str(), "fist")) {
 							skillId = SKILL_FIST;
-						} else if (tmpStrValue == "magicpoints") {
+						} else if (!tfs_strcmp(tmpStrValue.c_str(), "magicpoints")) {
 							skillId = STAT_MAGICPOINTS;
 							usenormalskill = 2;
-						} else if (tmpStrValue == "critical") {
+						} else if (!tfs_strcmp(tmpStrValue.c_str(), "critical")) {
 							usenormalskill = 3;
 							skillId = SKILL_CRITICAL_HIT_DAMAGE;
-						} else if (tmpStrValue == "lifeleech") {
+						} else if (!tfs_strcmp(tmpStrValue.c_str(), "lifeleech")) {
 							usenormalskill = 3;
 							skillId = SKILL_LIFE_LEECH_AMOUNT;
-						} else if (tmpStrValue == "manaleech") {
+						} else if (!tfs_strcmp(tmpStrValue.c_str(), "manaleech")) {
 							usenormalskill = 3;
 							skillId = SKILL_MANA_LEECH_AMOUNT;
 						} else {

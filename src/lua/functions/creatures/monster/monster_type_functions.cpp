@@ -870,29 +870,29 @@ int MonsterTypeFunctions::luaMonsterTypeCombatImmunities(lua_State* L) {
 
 	std::string immunity = Lua::getString(L, 2);
 	CombatType_t combatType = COMBAT_NONE;
-	if (immunity == "physical") {
+	if (!tfs_strcmp(immunity.c_str(), "physical")) {
 		combatType = COMBAT_PHYSICALDAMAGE;
-	} else if (immunity == "energy") {
+	} else if (!tfs_strcmp(immunity.c_str(), "energy")) {
 		combatType = COMBAT_ENERGYDAMAGE;
-	} else if (immunity == "fire") {
+	} else if (!tfs_strcmp(immunity.c_str(), "fire")) {
 		combatType = COMBAT_FIREDAMAGE;
-	} else if (immunity == "poison" || immunity == "earth") {
+	} else if (!tfs_strcmp(immunity.c_str(), "poison") || !tfs_strcmp(immunity.c_str(), "earth")) {
 		combatType = COMBAT_EARTHDAMAGE;
-	} else if (immunity == "drown") {
+	} else if (!tfs_strcmp(immunity.c_str(), "drown")) {
 		combatType = COMBAT_DROWNDAMAGE;
-	} else if (immunity == "ice") {
+	} else if (!tfs_strcmp(immunity.c_str(), "ice")) {
 		combatType = COMBAT_ICEDAMAGE;
-	} else if (immunity == "holy") {
+	} else if (!tfs_strcmp(immunity.c_str(), "holy")) {
 		combatType = COMBAT_HOLYDAMAGE;
-	} else if (immunity == "death") {
+	} else if (!tfs_strcmp(immunity.c_str(), "death")) {
 		combatType = COMBAT_DEATHDAMAGE;
-	} else if (immunity == "lifedrain") {
+	} else if (!tfs_strcmp(immunity.c_str(), "lifedrain")) {
 		combatType = COMBAT_LIFEDRAIN;
-	} else if (immunity == "manadrain") {
+	} else if (!tfs_strcmp(immunity.c_str(), "manadrain")) {
 		combatType = COMBAT_MANADRAIN;
-	} else if (immunity == "agony") {
+	} else if (!tfs_strcmp(immunity.c_str(), "agony")) {
 		combatType = COMBAT_AGONYDAMAGE;
-	} else if (immunity == "neutral") {
+	} else if (!tfs_strcmp(immunity.c_str(), "neutral")) {
 		combatType = COMBAT_NEUTRALDAMAGE;
 	} else {
 		g_logger().warn("[MonsterTypeFunctions::luaMonsterTypeCombatImmunities] - "
@@ -926,33 +926,33 @@ int MonsterTypeFunctions::luaMonsterTypeConditionImmunities(lua_State* L) {
 
 	std::string immunity = Lua::getString(L, 2);
 	ConditionType_t conditionType = CONDITION_NONE;
-	if (immunity == "physical") {
+	if (!tfs_strcmp(immunity.c_str(), "physical")) {
 		conditionType = CONDITION_BLEEDING;
-	} else if (immunity == "energy") {
+	} else if (!tfs_strcmp(immunity.c_str(), "energy")) {
 		conditionType = CONDITION_ENERGY;
-	} else if (immunity == "fire") {
+	} else if (!tfs_strcmp(immunity.c_str(), "fire")) {
 		conditionType = CONDITION_FIRE;
-	} else if (immunity == "poison" || immunity == "earth") {
+	} else if (!tfs_strcmp(immunity.c_str(), "poison") || !tfs_strcmp(immunity.c_str(), "earth")) {
 		conditionType = CONDITION_POISON;
-	} else if (immunity == "agony") {
+	} else if (!tfs_strcmp(immunity.c_str(), "agony")) {
 		conditionType = CONDITION_AGONY;
-	} else if (immunity == "drown") {
+	} else if (!tfs_strcmp(immunity.c_str(), "drown")) {
 		conditionType = CONDITION_DROWN;
-	} else if (immunity == "ice") {
+	} else if (!tfs_strcmp(immunity.c_str(), "ice")) {
 		conditionType = CONDITION_FREEZING;
-	} else if (immunity == "holy") {
+	} else if (!tfs_strcmp(immunity.c_str(), "holy")) {
 		conditionType = CONDITION_DAZZLED;
-	} else if (immunity == "death") {
+	} else if (!tfs_strcmp(immunity.c_str(), "death")) {
 		conditionType = CONDITION_CURSED;
-	} else if (immunity == "paralyze") {
+	} else if (!tfs_strcmp(immunity.c_str(), "paralyze")) {
 		conditionType = CONDITION_PARALYZE;
-	} else if (immunity == "outfit") {
+	} else if (!tfs_strcmp(immunity.c_str(), "outfit")) {
 		conditionType = CONDITION_OUTFIT;
-	} else if (immunity == "drunk") {
+	} else if (!tfs_strcmp(immunity.c_str(), "drunk")) {
 		conditionType = CONDITION_DRUNK;
-	} else if (immunity == "invisible" || immunity == "invisibility") {
+	} else if (!tfs_strcmp(immunity.c_str(), "invisible") || !tfs_strcmp(immunity.c_str(), "invisibility")) {
 		conditionType = CONDITION_INVISIBLE;
-	} else if (immunity == "bleed") {
+	} else if (!tfs_strcmp(immunity.c_str(), "bleed")) {
 		conditionType = CONDITION_BLEEDING;
 	} else {
 		g_logger().warn("[MonsterTypeFunctions::luaMonsterTypeConditionImmunities] - "
@@ -1400,17 +1400,17 @@ int MonsterTypeFunctions::luaMonsterTypeRace(lua_State* L) {
 		if (lua_gettop(L) == 1) {
 			lua_pushnumber(L, monsterType->info.race);
 		} else {
-			if (race == "venom") {
+			if (!tfs_strcmp(race.c_str(), "venom")) {
 				monsterType->info.race = RACE_VENOM;
-			} else if (race == "blood") {
+			} else if (!tfs_strcmp(race.c_str(), "blood")) {
 				monsterType->info.race = RACE_BLOOD;
-			} else if (race == "undead") {
+			} else if (!tfs_strcmp(race.c_str(), "undead")) {
 				monsterType->info.race = RACE_UNDEAD;
-			} else if (race == "fire") {
+			} else if (!tfs_strcmp(race.c_str(), "fire")) {
 				monsterType->info.race = RACE_FIRE;
-			} else if (race == "energy") {
+			} else if (!tfs_strcmp(race.c_str(), "energy")) {
 				monsterType->info.race = RACE_ENERGY;
-			} else if (race == "ink") {
+			} else if (!tfs_strcmp(race.c_str(), "ink")) {
 				monsterType->info.race = RACE_INK;
 			} else {
 				g_logger().warn("[MonsterTypeFunctions::luaMonsterTypeRace] - "

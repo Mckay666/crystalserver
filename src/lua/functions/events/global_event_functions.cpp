@@ -52,17 +52,17 @@ int GlobalEventFunctions::luaGlobalEventType(lua_State* L) {
 	if (global) {
 		const std::string typeName = Lua::getString(L, 2);
 		const std::string tmpStr = asLowerCaseString(typeName);
-		if (tmpStr == "startup") {
+		if (!tfs_strcmp(tmpStr.c_str(), "startup")) {
 			global->setEventType(GLOBALEVENT_STARTUP);
-		} else if (tmpStr == "shutdown") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "shutdown")) {
 			global->setEventType(GLOBALEVENT_SHUTDOWN);
-		} else if (tmpStr == "record") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "record")) {
 			global->setEventType(GLOBALEVENT_RECORD);
-		} else if (tmpStr == "periodchange") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "periodchange")) {
 			global->setEventType(GLOBALEVENT_PERIODCHANGE);
-		} else if (tmpStr == "onthink") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "onthink")) {
 			global->setEventType(GLOBALEVENT_ON_THINK);
-		} else if (tmpStr == "save") {
+		} else if (!tfs_strcmp(tmpStr.c_str(), "save")) {
 			global->setEventType(GLOBALEVENT_SAVE);
 		} else {
 			g_logger().error("[GlobalEventFunctions::luaGlobalEventType] - "
