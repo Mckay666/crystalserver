@@ -445,10 +445,18 @@ void Npc::onPlayerSellAllLoot(uint32_t playerId, uint16_t itemId, bool ignore, u
 	}
 
 	if (itemId == ITEM_GOLD_POUCH) {
+		const auto &owner = player->getShopOwner();
+		if (!owner || owner.get() != this) {
+			return;
+		}
+
 		const auto &container = player->getLootPouch();
 		if (!container) {
 			return;
 		}
+
+		const auto preSize = container->size();
+		const uint64_t preTotal = totalPrice;
 
 		phmap::flat_hash_map<uint16_t, uint16_t> toSell;
 		uint32_t MAX_BATCH_SIZE = 10;
@@ -480,21 +488,48 @@ void Npc::onPlayerSellAllLoot(uint32_t playerId, uint16_t itemId, bool ignore, u
 			onPlayerSellItem(player, m_itemId, 0, amount, ignore, totalPrice, container);
 		}
 
-		if (hasMore) {
+		const auto postSize = container->size();
+		const bool priceChanged = (totalPrice > preTotal);
+		const bool sizeChanged  = (postSize != preSize);
+		const bool madeProgress = priceChanged || sizeChanged;
+
+		if (hasMore && madeProgress) {
 			g_dispatcher().scheduleEvent(
-				NPC_SELL_TICKS, [this, playerId = player->getID(), itemId, ignore, totalPrice]() { onPlayerSellAllLoot(playerId, itemId, ignore, totalPrice); }, __FUNCTION__
+				NPC_SELL_TICKS,
+				[this, playerId = player->getID(), itemId, ignore, totalPrice]() {
+					const auto &seller = g_game().getPlayerByID(playerId);
+					if (!seller) {
+						return;
+					}
+
+					const auto &owner = seller->getShopOwner();
+					if (!owner || owner.get() != this) {
+						return;
+					}
+					onPlayerSellAllLoot(playerId, itemId, ignore, totalPrice);
+				},
+				__FUNCTION__
 			);
 			return;
 		}
 
 		auto ss = std::stringstream();
-		if (totalPrice == 0) {
-			ss << "You have no items in your loot pouch.";
-			player->sendTextMessage(MESSAGE_FAILURE, ss.str());
+		if (!madeProgress) {
+			if (totalPrice == 0) {
+				ss << "You have no sellable items in your loot pouch.";
+				player->sendTextMessage(MESSAGE_FAILURE, ss.str());
+			} else {
+				ss << "Finished selling. Some items in your loot pouch could not be sold.";
+				player->sendTextMessage(MESSAGE_LOOK, ss.str());
+			}
 		} else {
-			ss << "You sold all of the items from your loot pouch for ";
-			ss << totalPrice << " gold.";
-			player->sendTextMessage(MESSAGE_LOOK, ss.str());
+			if (totalPrice == 0) {
+				ss << "You have no items in your loot pouch.";
+				player->sendTextMessage(MESSAGE_FAILURE, ss.str());
+			} else {
+				ss << "You sold all of the items from your loot pouch for " << totalPrice << " gold.";
+				player->sendTextMessage(MESSAGE_LOOK, ss.str());
+			}
 		}
 
 		player->openPlayerContainers();
