@@ -490,7 +490,7 @@ void Npc::onPlayerSellAllLoot(uint32_t playerId, uint16_t itemId, bool ignore, u
 
 		const auto postSize = container->size();
 		const bool priceChanged = (totalPrice > preTotal);
-		const bool sizeChanged  = (postSize != preSize);
+		const bool sizeChanged = (postSize != preSize);
 		const bool madeProgress = priceChanged || sizeChanged;
 
 		if (hasMore && madeProgress) {
