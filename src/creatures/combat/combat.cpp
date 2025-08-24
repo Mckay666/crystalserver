@@ -2416,140 +2416,147 @@ void MagicField::onStepInField(const std::shared_ptr<Creature> &creature) {
 }
 
 void Combat::applyExtensions(const std::shared_ptr<Creature> &caster, const std::vector<std::shared_ptr<Creature>> targets, CombatDamage &damage, const CombatParams &params) {
-	metrics::method_latency measure(__METRICS_METHOD_NAME__);
-	if (damage.extension || !caster || damage.primary.type == COMBAT_HEALING) {
-		return;
-	}
+    metrics::method_latency measure(__METRICS_METHOD_NAME__);
+    if (damage.extension || !caster || damage.primary.type == COMBAT_HEALING) {
+        return;
+    }
 
-	const auto &player = caster->getPlayer();
-	const auto &monster = caster->getMonster();
+    const auto &player = caster->getPlayer();
+    const auto &monster = caster->getMonster();
 
-	uint16_t baseChance = 0;
-	int32_t baseBonus = 50;
-	if (player) {
-		baseChance = player->getSkillLevel(SKILL_CRITICAL_HIT_CHANCE);
-		baseBonus = player->getSkillLevel(SKILL_CRITICAL_HIT_DAMAGE);
+    uint16_t baseChance = 0;
+    int32_t baseBonus = 50;
+    if (player) {
+        baseChance = player->getSkillLevel(SKILL_CRITICAL_HIT_CHANCE);
+        baseBonus = player->getSkillLevel(SKILL_CRITICAL_HIT_DAMAGE);
 
-		uint16_t lowBlowRaceid = player->parseRacebyCharm(CHARM_LOW);
-		uint16_t savageBlowRaceid = player->parseRacebyCharm(CHARM_SAVAGE);
+        uint16_t lowBlowRaceid = player->parseRacebyCharm(CHARM_LOW);
+        uint16_t savageBlowRaceid = player->parseRacebyCharm(CHARM_SAVAGE);
 
-		baseBonus += damage.criticalDamage;
-		baseChance += static_cast<uint16_t>(damage.criticalChance);
+        baseBonus += damage.criticalDamage;
+        baseChance += static_cast<uint16_t>(damage.criticalChance);
 
-		bool canApplyCritical = false;
-		std::unordered_map<uint16_t, bool> lowBlowCrits;
-		canApplyCritical = (baseChance != 0 && uniform_random(1, 10000) <= baseChance);
+        bool canApplyCritical = false;
+        std::unordered_map<uint16_t, bool> lowBlowCrits;
+        canApplyCritical = (baseChance != 0 && uniform_random(1, 10000) <= baseChance);
 
-		bool canApplyFatal = false;
-		if (const auto &playerWeapon = player->getInventoryItem(CONST_SLOT_LEFT); playerWeapon && playerWeapon->getTier() > 0) {
-			double fatalChance = playerWeapon->getFatalChance();
-			if (const auto &playerBoots = player->getInventoryItem(CONST_SLOT_FEET); playerBoots && playerBoots->getTier()) {
-				fatalChance *= 1 + (playerBoots->getAmplificationChance() / 100);
-			}
-			canApplyFatal = (fatalChance > 0 && uniform_random(0, 10000) / 100.0 < fatalChance);
-		}
+        bool canApplyFatal = false;
+        if (const auto &playerWeapon = player->getInventoryItem(CONST_SLOT_LEFT); playerWeapon && playerWeapon->getTier() > 0) {
+            double fatalChance = playerWeapon->getFatalChance();
+            if (const auto &playerBoots = player->getInventoryItem(CONST_SLOT_FEET); playerBoots && playerBoots->getTier()) {
+                fatalChance *= 1 + (playerBoots->getAmplificationChance() / 100);
+            }
+            canApplyFatal = (fatalChance > 0 && uniform_random(0, 10000) / 100.0 < fatalChance);
+        }
 
-		if (!canApplyCritical && lowBlowRaceid != 0) {
-			const auto &charm = g_iobestiary().getBestiaryCharm(CHARM_LOW);
-			if (charm) {
-				auto charmTier = player->getCharmTier(CHARM_LOW);
-				uint16_t lowBlowChance = baseChance + (charm->chance[charmTier] * 100);
+        if (!canApplyCritical && lowBlowRaceid != 0) {
+            const auto &charm = g_iobestiary().getBestiaryCharm(CHARM_LOW);
+            if (charm) {
+                auto charmTier = player->getCharmTier(CHARM_LOW);
+                uint16_t lowBlowChance = baseChance + (charm->chance[charmTier] * 100);
 
-				for (const auto &target : targets) {
-					const auto &targetMonster = target->getMonster();
-					if (!targetMonster) {
-						continue;
-					}
+                for (const auto &target : targets) {
+                    const auto &targetMonster = target->getMonster();
+                    if (!targetMonster) {
+                        continue;
+                    }
 
-					const auto &mType = g_monsters().getMonsterType(targetMonster->getName());
-					if (!mType) {
-						continue;
-					}
+                    const auto &mType = g_monsters().getMonsterType(targetMonster->getName());
+                    if (!mType) {
+                        continue;
+                    }
 
-					uint16_t raceId = mType->info.raceid;
+                    uint16_t raceId = mType->info.raceid;
 
-					if (raceId == lowBlowRaceid) {
-						if (!lowBlowCrits.contains(raceId)) {
-							lowBlowCrits[raceId] = (lowBlowChance != 0 && uniform_random(1, 10000) <= lowBlowChance);
-						}
-					}
-				}
-			}
-		}
+                    if (raceId == lowBlowRaceid) {
+                        if (!lowBlowCrits.contains(raceId)) {
+                            lowBlowCrits[raceId] = (lowBlowChance != 0 && uniform_random(1, 10000) <= lowBlowChance);
+                        }
+                    }
+                }
+            }
+        }
 
-		int32_t savageBlowBonus = baseBonus;
-		if (savageBlowRaceid != 0) {
-			const auto &charm = g_iobestiary().getBestiaryCharm(CHARM_SAVAGE);
-			if (charm) {
-				auto charmTier = player->getCharmTier(CHARM_SAVAGE);
-				savageBlowBonus += charm->chance[charmTier] * 100;
-			}
-		}
+        int32_t savageBlowBonus = baseBonus;
+        if (savageBlowRaceid != 0) {
+            const auto &charm = g_iobestiary().getBestiaryCharm(CHARM_SAVAGE);
+            if (charm) {
+                auto charmTier = player->getCharmTier(CHARM_SAVAGE);
+                savageBlowBonus += charm->chance[charmTier] * 100;
+            }
+        }
 
-		bool isSingleCombat = targets.size() == 1;
-		for (const auto &targetCreature : targets) {
-			CombatDamage targetDamage = damage;
-			int32_t finalBonus = baseBonus;
-			bool isTargetCritical = canApplyCritical;
+        for (const auto &targetCreature : targets) {
+            CombatDamage targetDamage = damage;
+            int32_t finalBonus = baseBonus;
+            bool isTargetCritical = canApplyCritical;
 
-			const auto &targetMonster = targetCreature->getMonster();
-			if (targetMonster) {
-				const auto &mType = g_monsters().getMonsterType(targetMonster->getName());
-				if (!mType) {
-					continue;
-				}
+            const auto &targetMonster = targetCreature->getMonster();
+            if (targetMonster) {
+                const auto &mType = g_monsters().getMonsterType(targetMonster->getName());
+                if (!mType) {
+                    continue;
+                }
 
-				uint16_t raceId = mType->info.raceid;
+                uint16_t raceId = mType->info.raceid;
 
-				if (!canApplyCritical && lowBlowCrits.contains(raceId) && lowBlowCrits[raceId]) {
-					isTargetCritical = true;
-				}
+                if (!canApplyCritical && lowBlowCrits.contains(raceId) && lowBlowCrits[raceId]) {
+                    isTargetCritical = true;
+                }
 
-				if (raceId == savageBlowRaceid) {
-					finalBonus = savageBlowBonus;
-				}
-			}
+                if (raceId == savageBlowRaceid) {
+                    finalBonus = savageBlowBonus;
+                }
+            }
 
-			double targetMultiplier = 1.0 + static_cast<double>(finalBonus) / 10000.0;
+            double targetMultiplier = 1.0 + static_cast<double>(finalBonus) / 10000.0;
 
-			if (isTargetCritical) {
-				targetDamage.critical = true;
-				targetDamage.primary.value *= targetMultiplier;
-				targetDamage.secondary.value *= targetMultiplier;
-			}
+            if (isTargetCritical) {
+                targetDamage.critical = true;
+                targetDamage.primary.value *= targetMultiplier;
+                targetDamage.secondary.value *= targetMultiplier;
+            }
 
-			if (canApplyFatal) {
-				targetDamage.fatal = true;
-				targetDamage.primary.value += static_cast<int32_t>(std::round(targetDamage.primary.value * 0.6));
-				targetDamage.secondary.value += static_cast<int32_t>(std::round(targetDamage.secondary.value * 0.6));
-			}
+            if (canApplyFatal) {
+                targetDamage.fatal = true;
+                targetDamage.primary.value += static_cast<int32_t>(std::round(targetDamage.primary.value * 0.6));
+                targetDamage.secondary.value += static_cast<int32_t>(std::round(targetDamage.secondary.value * 0.6));
+            }
 
-			// If this combat affects only one target, apply the
-			// computed damage directly. Otherwise store the
-			// per-target damage to be used later by the combat
-			// loop.
-			if (isSingleCombat) {
-				damage = targetDamage;
-			} else {
-				targetCreature->setCombatDamage(targetDamage);
-			}
-		}
-	} else if (monster) {
-		baseChance = monster->getCriticalChance() * 100;
-		baseBonus = monster->getCriticalDamage() * 100;
-		baseBonus += damage.criticalDamage;
-		double multiplier = 1.0 + static_cast<double>(baseBonus) / 10000;
-		baseChance += static_cast<uint16_t>(damage.criticalChance);
+            targetCreature->setCombatDamage(targetDamage);
+        }
 
-		if (baseChance != 0 && uniform_random(1, 10000) <= baseChance) {
-			damage.critical = true;
-			damage.primary.value *= multiplier;
-			damage.secondary.value *= multiplier;
-		}
+        if (targets.size() == 1) {
+            damage = targets.front()->getCombatDamage();
+        }
+    } else if (monster) {
+        baseChance = monster->getCriticalChance() * 100;
+        baseBonus = monster->getCriticalDamage() * 100;
+        baseBonus += damage.criticalDamage;
+        double multiplier = 1.0 + static_cast<double>(baseBonus) / 10000;
+        baseChance += static_cast<uint16_t>(damage.criticalChance);
 
-		damage.primary.value *= monster->getAttackMultiplier();
-		damage.secondary.value *= monster->getAttackMultiplier();
-	}
+        bool isCritical = (baseChance != 0 && uniform_random(1, 10000) <= baseChance);
+        
+        for (const auto &targetCreature : targets) {
+            CombatDamage targetDamage = damage;
+            
+            if (isCritical) {
+                targetDamage.critical = true;
+                targetDamage.primary.value *= multiplier;
+                targetDamage.secondary.value *= multiplier;
+            }
+
+            targetDamage.primary.value *= monster->getAttackMultiplier();
+            targetDamage.secondary.value *= monster->getAttackMultiplier();
+            
+            targetCreature->setCombatDamage(targetDamage);
+        }
+
+        if (targets.size() == 1) {
+            damage = targets.front()->getCombatDamage();
+        }
+    }
 }
 
 MagicField::MagicField(uint16_t type) :
