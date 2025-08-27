@@ -8,6 +8,10 @@ on:
   push:
     paths:
       - "src/**"
+
+permissions:
+  contents: write
+
 jobs:
   cancel-runs:
     if: github.event_name == 'pull_request' && github.ref != 'refs/heads/main'
