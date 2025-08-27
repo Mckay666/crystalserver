@@ -2521,10 +2521,9 @@ void Combat::applyExtensions(const std::shared_ptr<Creature> &caster, const std:
 				targetDamage.fatal = true;
 				targetDamage.primary.value += static_cast<int32_t>(std::round(targetDamage.primary.value * 0.6));
 				targetDamage.secondary.value += static_cast<int32_t>(std::round(targetDamage.secondary.value * 0.6));
-			}
+				}
 				targetCreature->setCombatDamage(targetDamage);
-        }
-
+  }
         if (targets.size() == 1) {
             damage = targets.front()->getCombatDamage();
         }
@@ -2554,6 +2553,7 @@ void Combat::applyExtensions(const std::shared_ptr<Creature> &caster, const std:
 
       if (targets.size() == 1) {
           damage = targets.front()->getCombatDamage();
+			}
 	}
 }
 
