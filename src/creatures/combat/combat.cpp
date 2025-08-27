@@ -2554,6 +2554,7 @@ void Combat::applyExtensions(const std::shared_ptr<Creature> &caster, const std:
 
       if (targets.size() == 1) {
           damage = targets.front()->getCombatDamage();
+			}
 	}
 }
 
